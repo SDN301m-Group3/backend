@@ -1,13 +1,11 @@
 const createError = require('http-errors');
 const User = require('../models/user.model');
-const client = require('../configs/redis.config');
 const { ValidationConfig } = require('../configs');
-const welcomeTemplate = require('../templates/welcome.template');
-const handlebars = require('handlebars');
 const { NodemailerConfig, JwtConfig } = require('../configs');
-const { randomUUID } = require('crypto');
+const MailerService = require('../services/mailer.service');
 const bcrypt = require('bcrypt');
 const os = require('os');
+const { selector } = require('../utils');
 
 module.exports = {
     register: async (req, res, next) => {
@@ -40,36 +38,15 @@ module.exports = {
             });
             const savedUser = await user.save();
 
-            const activationToken = `${randomUUID()}${randomUUID()}`.replace(
-                /-/g,
-                ''
-            );
-            await client.set(
-                `emailActivationToken-${activationToken}`,
-                user.id,
-                'EX',
-                900
-            );
+            await MailerService.sendActivationEmail(savedUser);
 
-            const template = handlebars.compile(welcomeTemplate);
-            const htmlToSend = template({
-                email: user.email,
-                siteConfigName: process.env.FRONTEND_SITE_NAME,
-                activeLink: `${process.env.BACKEND_URL}/auth/activate/${activationToken}?active=EMAIL_VERIFY`,
-            });
-
-            const mailOptions = {
-                from: process.env.EMAIL_NAME,
-                to: user.email,
-                subject: `Activate your account ${process.env.FRONTEND_SITE_NAME}`,
-                text: `Welcome ${user.email} to ${process.env.FRONTEND_SITE_NAME}. Link to active your account: ${process.env.BACKEND_URL}/auth/activate/${activationToken}?active=EMAIL_VERIFY`,
-                html: htmlToSend,
-            };
-
-            await NodemailerConfig.transporter.sendMail(mailOptions);
-
-            const userObject = savedUser.toObject();
-            delete userObject.password;
+            const userObject = selector(savedUser.toObject(), [
+                'fullName',
+                'username',
+                'phoneNumber',
+                'email',
+                'status',
+            ]);
             res.send(userObject);
         } catch (error) {
             if (error.errors) {
