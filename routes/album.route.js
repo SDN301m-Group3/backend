@@ -9,10 +9,10 @@ albumRouter.post(
   AlbumController.createAlbum
 );
 
-// albumRouter.put(
-//   "/delete/:id",
-//   JwtConfig.verifyAccessToken,
-//   AlbumController.removeAlbum
-// );
+albumRouter.put(
+  "/delete/:id",
+  JwtConfig.verifyAccessToken,
+  AlbumController.removeAlbum
+);
 
 module.exports = albumRouter;
