@@ -2,6 +2,7 @@ const { createGroupFormSchema } = require('../configs/validation.config');
 const Group = require('../models/group.model');
 const createError = require('http-errors');
 const mongoose = require('mongoose');
+const Album = require('../models/album.model');
 
 module.exports = {
     getMyGroups: async (req, res, next) => {
@@ -64,6 +65,20 @@ module.exports = {
                 );
                 error = createError(422, { message: errors.join(', ') });
             }
+            next(error);
+        }
+    },
+    getAlbumsByGroupId: async (req, res, next) => {
+        try {
+            const user = req.payload;
+            console.log(user.aud);
+            const { groupId } = req.params;
+            const albums = await Album.find(
+                { group: groupId, members: { $in: [user.aud] } },
+                { _id: 1, title: 1, description: 1, photos: { $slice: -1 } }
+            );
+            res.json(albums);
+        } catch (error) {
             next(error);
         }
     },

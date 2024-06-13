@@ -22,6 +22,12 @@ const AlbumSchema = new Schema(
                 ref: 'photo',
             },
         ],
+        members: [
+            {
+                type: Schema.Types.ObjectId,
+                ref: 'user',
+            },
+        ],
         group: {
             type: Schema.Types.ObjectId,
             ref: 'group',

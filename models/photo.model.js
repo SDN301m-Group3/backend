@@ -8,6 +8,10 @@ const PhotoSchema = new Schema(
             ref: 'user',
             required: true,
         },
+        url: {
+            type: String,
+            required: true,
+        },
         title: {
             type: String,
             required: false,
