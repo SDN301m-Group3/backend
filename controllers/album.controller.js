@@ -25,25 +25,24 @@ module.exports = {
     }
   },
 
-  // removeAlbum: async (req, res, next) => {
-  //   try {
-  //     const id = req.params.id;
-  //     const user = req.payload;
-  //     const album = await Album.findByIdAndUpdate(
-  //       id,
-  //       { owner: user.aud },
-  //       { new: false }
-  //     ).then((album) => {
-  //       if (!album) {
-  //         throw createError(404, "Album not found");
-  //       } else {
-  //         //status to deleted
-  //         album.status = "DELETED";
-  //         res.send(album);
-  //       }
-  //     });
-  //   } catch (error) {
-  //     next(error);
-  //   }
-  // },
+  removeAlbum: async (req, res, next) => {
+    try {
+      const id = req.params.id;
+      const user = req.payload;
+      const album = await Album.findByIdAndUpdate(
+        id,
+        { owner: user.aud },
+        { new: false }
+      ).then((album) => {
+        if (!album) {
+          throw createError(404, "Album not found");
+        } else {
+          album.status = "DELETED";
+          res.send(album);
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
 };
