@@ -1,59 +1,135 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
-const bcrypt = require('bcrypt');
+const bcrypt = require("bcrypt");
 
 const UserSchema = new Schema(
-    {
-        fullName: {
-            type: String,
-            required: true,
-        },
-        username: {
-            type: String,
-            required: true,
-            unique: true,
-        },
-        phoneNumber: {
-            type: String,
-            required: false,
-        },
-        email: {
-            type: String,
-            required: true,
-            lowercase: true,
-            unique: true,
-        },
-        password: {
-            type: String,
-            required: true,
-        },
-        status: {
-            type: String,
-            enum: ['NOT_ACTIVE', 'ACTIVE', 'BANNED', 'DELETED'],
-            default: 'NOT_ACTIVE',
-        },
+  {
+    username: {
+      type: String,
+      required: [true, "Username is required"],
+      minLength: [6, "Username must be at least 6 characters"],
+      maxLength: [20, "Username must be at most 20 characters"],
+      unique: true,
+      trim: true,
     },
-    { timestamps: true }
+    email: {
+      type: String,
+      required: [true, "Email is required"],
+      validate: {
+        validator: function (v) {
+          return /^([\w-\.]+@([\w-]+\.)+[\w-]{2,4})?$/.test(v);
+        },
+        message: (props) => `${props.value} is not a valid email!`,
+      },
+      unique: [true, "Email already exists"],
+    },
+    fullName: {
+      type: String,
+      required: [true, "Full name is required"],
+      trim: true,
+      minLength: [6, "Full name must be at least 6 characters"],
+      maxLength: [50, "Full name must be at most 50 characters"],
+    },
+    status: {
+      type: String,
+      enum: ["NOT_ACTIVE", "ACTIVE", "BANNED", "DELETED"],
+      default: "NOT_ACTIVE",
+    },
+    phoneNumber: {
+      type: String,
+      required: false,
+      validate: {
+        validator: function (v) {
+          return /^\d{10}$/.test(v);
+        },
+        message: (props) => `${props.value} is not a valid phone number!`,
+      },
+    },
+    password: {
+      type: String,
+      required: [true, "Password is required"],
+    },
+    img: {
+      type: String,
+      required: false,
+    },
+    groups: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "group",
+      },
+    ],
+    histories: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "history",
+      },
+    ],
+    notifications: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "notification",
+      },
+    ],
+    bio: {
+      type: String,
+      required: false,
+      maxLength: [200, "Bio must be at most 200 characters"],
+    },
+  },
+  { timestamps: true }
 );
 
-// UserSchema.pre('save', async function (next) {
-//     try {
-//         const salt = await bcrypt.genSalt(10);
-//         const hashedPassword = await bcrypt.hash(this.password, salt);
-//         this.password = hashedPassword;
-//         next();
-//     } catch (error) {
-//         next(error);
-//     }
-// });
-
 UserSchema.methods.isValidPassword = async function (password) {
-    try {
-        return await bcrypt.compare(password, this.password);
-    } catch (error) {
-        throw error;
-    }
+  try {
+    return await bcrypt.compare(password, this.password);
+  } catch (error) {
+    throw error;
+  }
 };
 
-const User = mongoose.model('user', UserSchema);
+UserSchema.methods.addGroup = function (groupId) {
+  if (this.groups.includes(groupId)) {
+    return this;
+  }
+  this.groups.push(groupId);
+  return this.save();
+};
+
+UserSchema.methods.addHistory = function (historyId) {
+  if (this.histories.includes(historyId)) {
+    return this;
+  }
+  this.histories.push(historyId);
+  return this.save();
+};
+
+UserSchema.methods.addNotification = function (notificationId) {
+  if (this.notifications.includes(notificationId)) {
+    return this;
+  }
+  this.notifications.push(notificationId);
+  return this.save();
+};
+
+UserSchema.methods.removeGroup = function (groupId) {
+  this.groups = this.groups.filter((group) => group.toString() !== groupId);
+  return this.save();
+};
+
+UserSchema.methods.removeHistory = function (historyId) {
+  this.histories = this.histories.filter(
+    (history) => history.toString() !== historyId
+  );
+  return this.save();
+};
+
+UserSchema.methods.removeNotification = function (notificationId) {
+  this.notifications = this.notifications.filter(
+    (notification) => notification.toString() !== notificationId
+  );
+  return this.save();
+};
+
+const User = mongoose.model("user", UserSchema);
 module.exports = User;
