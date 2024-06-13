@@ -71,13 +71,43 @@ module.exports = {
     getAlbumsByGroupId: async (req, res, next) => {
         try {
             const user = req.payload;
-            console.log(user.aud);
             const { groupId } = req.params;
             const albums = await Album.find(
                 { group: groupId, members: { $in: [user.aud] } },
                 { _id: 1, title: 1, description: 1, photos: { $slice: -1 } }
-            );
+            ).populate('photos', 'url');
             res.json(albums);
+        } catch (error) {
+            next(error);
+        }
+    },
+    getMembersByGroupId: async (req, res, next) => {
+        try {
+            const user = req.payload;
+            const { groupId } = req.params;
+            const { limit } = req.query;
+
+            const parsedLimit = parseInt(limit);
+            if (isNaN(parsedLimit)) {
+                throw createError(400, 'Invalid limit value');
+            }
+            const limitValue =
+                Math.abs(parsedLimit) > 10 ? 10 : Math.abs(parsedLimit);
+
+            const group = await Group.findOne({
+                _id: groupId,
+                members: { $in: [user.aud] },
+            }).populate({
+                path: 'members',
+                select: 'username fullName img',
+                options: { limit: limitValue, sort: { _id: -1 } },
+            });
+
+            if (!group) {
+                throw createError(404, 'Group not found');
+            }
+
+            res.json(group.members);
         } catch (error) {
             next(error);
         }
