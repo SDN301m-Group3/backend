@@ -9,10 +9,28 @@ groupRouter.get(
     GroupController.getMyGroups
 );
 
+groupRouter.get(
+    '/all-groups',
+    JwtConfig.verifyAccessToken,
+    GroupController.getAllGroupsWithUser
+)
+
 groupRouter.post(
     '/create',
     JwtConfig.verifyAccessToken,
     GroupController.createGroup
+);
+
+groupRouter.get(
+    '/:groupId/albums',
+    JwtConfig.verifyAccessToken,
+    GroupController.getAlbumsByGroupId
+);
+
+groupRouter.get(
+    '/:groupId/members',
+    JwtConfig.verifyAccessToken,
+    GroupController.getMembersByGroupId
 );
 
 module.exports = groupRouter;
