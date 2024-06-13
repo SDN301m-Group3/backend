@@ -21,4 +21,16 @@ groupRouter.post(
     GroupController.createGroup
 );
 
+groupRouter.get(
+    '/:groupId/albums',
+    JwtConfig.verifyAccessToken,
+    GroupController.getAlbumsByGroupId
+);
+
+groupRouter.get(
+    '/:groupId/members',
+    JwtConfig.verifyAccessToken,
+    GroupController.getMembersByGroupId
+);
+
 module.exports = groupRouter;
