@@ -3,7 +3,45 @@ const Group = require('../models/group.model');
 const createError = require('http-errors');
 const mongoose = require('mongoose');
 
+// get all groups that user joins
 module.exports = {
+    getAllGroupsWithUser: async (req, res, next) => {
+        try {
+            const user = req.payload;
+
+        const groups = await Group.aggregate([
+            { $match: { members: new mongoose.Types.ObjectId(user.aud) } },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'owner',
+                    foreignField: '_id',
+                    as: 'owner',
+                },
+            },
+            {
+                $unwind: '$owner',
+            },
+            {
+                $project: {
+                    _id: 1,
+                    title: 1,
+                    description: 1,
+                    groupImg:1,
+                    'owner.fullName': 1,
+                    'owner.email': 1,
+                    numberOfAlbums: { $size: '$albums' },
+                    numberOfMembers: { $size: '$members' },
+                },
+            },
+        ]);
+
+        res.send(groups);
+        } catch (error) {
+            next(error)
+        }
+    },
+    
     getMyGroups: async (req, res, next) => {
         try {
             const user = req.payload;
@@ -29,6 +67,7 @@ module.exports = {
                         _id: 1,
                         title: 1,
                         description: 1,
+                        groupImg:1,
                         'owner.fullName': 1,
                         'owner.email': 1,
                         numberOfAlbums: { $size: '$albums' },

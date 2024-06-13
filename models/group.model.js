@@ -23,6 +23,10 @@ const GroupSchema = new Schema(
       enum: ["ACTIVE", "INACTIVE", "DELETED"],
       default: "ACTIVE",
     },
+    groupImg: {
+       type: String,
+       require: false  
+    },
     albums: [
       {
         type: Schema.Types.ObjectId,

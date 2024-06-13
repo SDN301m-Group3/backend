@@ -9,6 +9,12 @@ groupRouter.get(
     GroupController.getMyGroups
 );
 
+groupRouter.get(
+    '/all-groups',
+    JwtConfig.verifyAccessToken,
+    GroupController.getAllGroupsWithUser
+)
+
 groupRouter.post(
     '/create',
     JwtConfig.verifyAccessToken,
