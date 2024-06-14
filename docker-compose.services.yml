@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  mongodb: 
+    image: mongodb/mongodb-community-server
+    container_name: photoco_database
+    ports:
+      - 27017:27017
+    volumes:
+      - photocodata:/mongodb/data/db
+    env_file:
+      - ./.env
+    environment:
+      - MONGO_INITDB_DATABASE=$MONGODB_NAME
+      - MONGO_INITDB_ROOT_USERNAME=${MONGODB_USERNAME:-root}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGODB_PASSWORD:-root}
