@@ -1,11 +1,12 @@
 const createError = require('http-errors');
 const User = require('../models/user.model');
 const { ValidationConfig } = require('../configs');
-const { NodemailerConfig, JwtConfig } = require('../configs');
+const { JwtConfig } = require('../configs');
 const MailerService = require('../services/mailer.service');
 const bcrypt = require('bcrypt');
 const os = require('os');
 const { selector } = require('../utils');
+const client = require('../configs/redis.config');
 
 module.exports = {
     register: async (req, res, next) => {
