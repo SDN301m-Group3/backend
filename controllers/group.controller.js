@@ -174,4 +174,37 @@ module.exports = {
             next(error);
         }
     },
+    getGroupById: async (req, res, next) => {
+        try {
+            const user = req.payload;
+            const { groupId } = req.params;
+            const group = await Group.findOne(
+                {
+                    _id: groupId,
+                    members: { $in: [user.aud] },
+                    status: 'ACTIVE',
+                },
+                {
+                    title: 1,
+                    description: 1,
+                    groupImg: 1,
+                    owner: 1,
+                    albums: 1,
+                    groupCode: 1,
+                    createdAt: 1,
+                }
+            )
+                .populate('owner', '_id fullName username email img')
+                .populate('members', '_id fullName username email img')
+                .populate('albums', '_id title description');
+
+            if (!group) {
+                throw createError(404, 'Group not found');
+            }
+
+            res.status(200).json(group);
+        } catch (error) {
+            next(error);
+        }
+    },
 };
