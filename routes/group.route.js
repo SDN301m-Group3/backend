@@ -45,4 +45,10 @@ groupRouter.post(
     GroupController.createAlbum
 );
 
+groupRouter.post(
+    '/join',
+    JwtConfig.verifyAccessToken,
+    GroupController.joinGroup
+);
+
 module.exports = groupRouter;
