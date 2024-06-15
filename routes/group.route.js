@@ -39,4 +39,10 @@ groupRouter.get(
     GroupController.getGroupById
 );
 
+groupRouter.post(
+    '/join',
+    JwtConfig.verifyAccessToken,
+    GroupController.joinGroup
+);
+
 module.exports = groupRouter;
