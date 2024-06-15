@@ -3,6 +3,7 @@ const Group = require('../models/group.model');
 const createError = require('http-errors');
 const mongoose = require('mongoose');
 const Album = require('../models/album.model');
+const User = require('../models/user.model');
 
 // get all groups that user joins
 module.exports = {
@@ -115,6 +116,14 @@ module.exports = {
             });
             const savedGroup = await group.save();
             await savedGroup.addMember(user.aud);
+
+            // Update the user's group
+            await User.findOneAndUpdate(
+                { _id: user.aud },
+                { $push: { groups: savedGroup._id } },
+                { new: true }
+            );
+
             res.send(savedGroup);
         } catch (error) {
             if (error.errors) {
@@ -203,6 +212,38 @@ module.exports = {
             }
 
             res.status(200).json(group);
+        } catch (error) {
+            next(error);
+        }
+    },
+    joinGroup: async (req, res, next) => {
+        try {
+            const user = req.payload;
+            const { groupCode } = req.body;
+
+            const group = await Group.findOne({
+                groupCode,
+                status: 'ACTIVE',
+            });
+
+            if (!group) {
+                throw createError(404, 'Group not found');
+            }
+
+            if (group.members.includes(user.aud)) {
+                throw createError(400, 'You already joined this group');
+            }
+
+            await group.addMember(user.aud);
+
+            // Update the user's group
+            await User.findOneAndUpdate(
+                { _id: user.aud },
+                { $push: { groups: group._id } },
+                { new: true }
+            );
+
+            res.send(group);
         } catch (error) {
             next(error);
         }
