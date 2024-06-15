@@ -39,4 +39,10 @@ groupRouter.get(
     GroupController.getGroupById
 );
 
+groupRouter.post(
+    '/:groupId/create-album',
+    JwtConfig.verifyAccessToken,
+    GroupController.createAlbum
+);
+
 module.exports = groupRouter;
