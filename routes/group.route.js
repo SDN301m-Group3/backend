@@ -40,6 +40,12 @@ groupRouter.get(
 );
 
 groupRouter.post(
+    '/:groupId/create-album',
+    JwtConfig.verifyAccessToken,
+    GroupController.createAlbum
+);
+
+groupRouter.post(
     '/join',
     JwtConfig.verifyAccessToken,
     GroupController.joinGroup

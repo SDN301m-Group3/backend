@@ -1,9 +1,13 @@
-const { createGroupFormSchema } = require('../configs/validation.config');
+const {
+    createGroupFormSchema,
+    createAlbumFormSchema,
+} = require('../configs/validation.config');
 const Group = require('../models/group.model');
-const createError = require('http-errors');
-const mongoose = require('mongoose');
 const Album = require('../models/album.model');
 const User = require('../models/user.model');
+
+const createError = require('http-errors');
+const mongoose = require('mongoose');
 
 // get all groups that user joins
 module.exports = {
@@ -214,6 +218,34 @@ module.exports = {
             res.status(200).json(group);
         } catch (error) {
             next(error);
+        }
+    },
+    createAlbum: async (req, res, next) => {
+        try {
+            const user = req.payload;
+            const { title, description } = createAlbumFormSchema.parse(
+                req.body
+            );
+            const album = new Album({
+                title,
+                description,
+                owner: new mongoose.Types.ObjectId(user.aud),
+                group: new mongoose.Types.ObjectId(req.params.groupId),
+            });
+            const savedAlbum = await album.save();
+            await savedAlbum.addMember(user.aud);
+            // if i add a album
+            await Group.findByIdAndUpdate(req.params.groupId, {
+                $push: { albums: savedAlbum._id },
+            });
+            res.send(savedAlbum);
+        } catch (error) {
+            if (error.errors) {
+                const errors = Object.values(error.errors).map(
+                    (err) => err.message
+                );
+                error = createError(422, { message: errors.join(', ') });
+            }
         }
     },
     joinGroup: async (req, res, next) => {
