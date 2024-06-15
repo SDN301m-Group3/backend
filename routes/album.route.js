@@ -15,4 +15,10 @@ albumRouter.put(
     AlbumController.removeAlbum
 );
 
+albumRouter.get(
+    '/:albumId',
+    JwtConfig.verifyAccessToken,
+    AlbumController.getAlbumById
+);
+
 module.exports = albumRouter;

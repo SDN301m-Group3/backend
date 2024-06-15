@@ -51,4 +51,36 @@ module.exports = {
             next(error);
         }
     },
+    getAlbumById: async (req, res, next) => {
+        try {
+            const user = req.payload;
+            const { albumId } = req.params;
+            const album = await Album.findOne(
+                {
+                    _id: albumId,
+                    members: { $in: [user.aud] },
+                    status: 'ACTIVE',
+                },
+                {
+                    title: 1,
+                    description: 1,
+                    owner: 1,
+                    group: 1,
+                    members: 1,
+                    createdAt: 1,
+                }
+            )
+                .populate('owner', '_id fullName username email img')
+                .populate('group', '_id title description groupImg')
+                .populate('members', '_id fullName username email img');
+
+            if (!album) {
+                throw createError(404, 'Album not found');
+            }
+
+            res.status(200).json(album);
+        } catch (error) {
+            next(error);
+        }
+    },
 };
