@@ -13,7 +13,7 @@ groupRouter.get(
     '/all-groups',
     JwtConfig.verifyAccessToken,
     GroupController.getAllGroupsWithUser
-)
+);
 
 groupRouter.post(
     '/create',
@@ -31,6 +31,12 @@ groupRouter.get(
     '/:groupId/members',
     JwtConfig.verifyAccessToken,
     GroupController.getMembersByGroupId
+);
+
+groupRouter.get(
+    '/:groupId',
+    JwtConfig.verifyAccessToken,
+    GroupController.getGroupById
 );
 
 module.exports = groupRouter;
