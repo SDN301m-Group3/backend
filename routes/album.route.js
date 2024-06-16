@@ -27,4 +27,10 @@ albumRouter.get(
     AlbumController.getPhotosByAlbumId
 );
 
+albumRouter.get(
+    '/:albumId',
+    JwtConfig.verifyAccessToken,
+    AlbumController.getAlbumById
+);
+
 module.exports = albumRouter;
