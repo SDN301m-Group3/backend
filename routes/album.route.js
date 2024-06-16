@@ -16,6 +16,18 @@ albumRouter.put(
 );
 
 albumRouter.get(
+    '/:albumId/members',
+    JwtConfig.verifyAccessToken,
+    AlbumController.getMembersByAlbumId
+);
+
+albumRouter.get(
+    '/:albumId/photos',
+    JwtConfig.verifyAccessToken,
+    AlbumController.getPhotosByAlbumId
+);
+
+albumRouter.get(
     '/:albumId',
     JwtConfig.verifyAccessToken,
     AlbumController.getAlbumById

@@ -1,36 +1,9 @@
-const { createAlbumFormSchema } = require('../configs/validation.config');
 const Album = require('../models/album.model');
 const createError = require('http-errors');
 const mongoose = require('mongoose');
+const Photo = require('../models/photo.model');
 
 module.exports = {
-    // createAlbum: async (req, res, next) => {
-    //     try {
-    //         const user = req.payload;
-    //         const { title, description } = createAlbumFormSchema.parse(
-    //             req.body
-    //         );
-    //         const album = new Album({
-    //             title,
-    //             description,
-    //             owner: new mongoose.Types.ObjectId(user.aud),
-    //             group: new mongoose.Types.ObjectId(req.params.groupId),
-    //         });
-    //         const savedAlbum = await album.save();
-    //         await savedAlbum.addMember(user.aud);
-    //         // if i add a album
-    //         res.send(savedAlbum);
-    //     } catch (error) {
-    //         if (error.errors) {
-    //             const errors = Object.values(error.errors).map(
-    //                 (err) => err.message
-    //             );
-    //             error = createError(422, { message: errors.join(', ') });
-    //         }
-    //         next(error);
-    //     }
-    // },
-
     removeAlbum: async (req, res, next) => {
         try {
             const id = req.params.id;
@@ -51,6 +24,37 @@ module.exports = {
             next(error);
         }
     },
+    getMembersByAlbumId: async (req, res, next) => {
+        try {
+            const { albumId } = req.params;
+            const { limit } = req.query;
+            const user = req.payload;
+
+            const parsedLimit = parseInt(limit);
+            if (isNaN(parsedLimit)) {
+                throw createError(400, 'Invalid limit value');
+            }
+            const limitValue =
+                Math.abs(parsedLimit) > 10 ? 10 : Math.abs(parsedLimit);
+
+            const album = await Album.findOne({
+                _id: albumId,
+                status: 'ACTIVE',
+                members: { $in: [user.aud] },
+            }).populate({
+                path: 'members',
+                select: 'fullName username img',
+                options: { limit: limitValue, sort: { _id: -1 } },
+            });
+            if (!album) {
+                throw createError(404, 'Album not found');
+            }
+            res.json(album.members);
+        } catch (error) {
+            next(error);
+        }
+    },
+
     getAlbumById: async (req, res, next) => {
         try {
             const user = req.payload;
@@ -77,6 +81,85 @@ module.exports = {
             if (!album) {
                 throw createError(404, 'Album not found');
             }
+            res.json(album.members);
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    getPhotosByAlbumId: async (req, res, next) => {
+        try {
+            const user = req.payload;
+            const { albumId } = req.params;
+            const { sort = 'desc', page = 1, pageSize = 10 } = req.query;
+
+            const parsedPage = parseInt(page);
+            const parsedPageSize = parseInt(pageSize);
+            if (isNaN(parsedPage)) {
+                throw createError(400, 'Invalid page value');
+            }
+            if (isNaN(parsedPageSize)) {
+                throw createError(400, 'Invalid pageSize value');
+            }
+            if (parsedPageSize > 30) {
+                throw createError(400, 'pageSize must be at most 30');
+            }
+            if (parsedPageSize < 1) {
+                throw createError(400, 'pageSize must be at least 1');
+            }
+
+            const album = await Album.findOne({
+                _id: albumId,
+                status: 'ACTIVE',
+                members: { $in: [user.aud] },
+            }).populate({
+                path: 'photos',
+                select: 'title url owner ',
+                options: {
+                    sort: { _id: sort === 'asc' ? 1 : -1 },
+                },
+                populate: {
+                    path: 'owner',
+                    select: 'fullName username img',
+                },
+            });
+            if (!album) throw createError(404, 'Album not found');
+
+            const totalElements = await Photo.countDocuments({
+                _id: { $in: album.photos },
+            });
+            const totalPages = Math.ceil(totalElements / parsedPageSize);
+
+            const photos = await Photo.find({
+                _id: { $in: album.photos },
+            })
+                .sort({ _id: sort === 'asc' ? 1 : -1 })
+                .skip((parsedPage - 1) * parsedPageSize)
+                .limit(parsedPageSize)
+                .populate('owner', 'fullName username img');
+
+            const hasNext = parsedPage < totalPages;
+            const hasPrev = parsedPage > 1;
+            console.log(
+                parsedPage,
+                totalPages,
+                totalElements,
+                parsedPageSize,
+                hasNext,
+                hasPrev
+            );
+
+            res.json({
+                pageMeta: {
+                    totalPages,
+                    page: parsedPage,
+                    totalElements,
+                    pageSize: parsedPageSize,
+                    hasNext,
+                    hasPrev,
+                },
+                photos,
+            });
 
             res.status(200).json(album);
         } catch (error) {
