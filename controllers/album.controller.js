@@ -222,6 +222,10 @@ module.exports = {
 
                 const savedPhoto = await photo.save();
                 savedPhoto.addAlbum(albumId);
+                if (!album.photos) {
+                    album.photos = [];
+                }
+                await album.addPhoto(savedPhoto._id);
 
                 await new Promise((resolve) => setTimeout(resolve, 1000));
             }
