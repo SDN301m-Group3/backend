@@ -8,7 +8,7 @@ const registerSchema = z.object({
     username: z
         .string({ required_error: 'Username can not empty' })
         .min(3, { message: 'Username must be at least 3 characters' })
-        .max(20, { message: 'Username must be maximum 50 characters' }),
+        .max(20, { message: 'Username must be maximum 20 characters' }),
     email: z
         .string({ required_error: 'Email can not empty' })
         .email({ message: 'Email must be a valid email' }),
@@ -20,7 +20,7 @@ const registerSchema = z.object({
         .transform((e) => (e === '' ? undefined : e)),
     password: z
         .string({ required_error: 'Password can not empty' })
-        .min(8, { message: 'Password must be at least 6 characters' })
+        .min(6, { message: 'Password must be at least 6 characters' })
         .refine((password) => /^(?=.*[A-Za-z])(?=.*\d).+$/.test(password), {
             message: 'Password must contain at least one letter and one number',
         }),
