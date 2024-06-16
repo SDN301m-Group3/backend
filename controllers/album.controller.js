@@ -108,48 +108,62 @@ module.exports = {
                 throw createError(400, 'pageSize must be at least 1');
             }
 
-            const album = await Album.findOne({
-                _id: albumId,
-                status: 'ACTIVE',
-                members: { $in: [user.aud] },
-            }).populate({
-                path: 'photos',
-                select: 'title url owner ',
-                options: {
-                    sort: { _id: sort === 'asc' ? 1 : -1 },
+            const album = await Album.findOne(
+                {
+                    _id: albumId,
+                    members: { $in: [user.aud] },
+                    status: 'ACTIVE',
                 },
-                populate: {
-                    path: 'owner',
-                    select: 'fullName username img',
-                },
-            });
-            if (!album) throw createError(404, 'Album not found');
+                {
+                    _id: 1,
+                }
+            );
+
+            if (!album) {
+                throw createError(404, 'Album not found');
+            }
 
             const totalElements = await Photo.countDocuments({
-                _id: { $in: album.photos },
+                album: { $in: [albumId] },
             });
+
+            if (totalElements === 0) {
+                return res.status(200).json({
+                    pageMeta: {
+                        totalPages: 0,
+                        page: parsedPage,
+                        totalElements: 0,
+                        pageSize: parsedPageSize,
+                        hasNext: false,
+                        hasPrev: false,
+                    },
+                    photos: [],
+                });
+            }
+
             const totalPages = Math.ceil(totalElements / parsedPageSize);
 
-            const photos = await Photo.find({
-                _id: { $in: album.photos },
-            })
-                .sort({ _id: sort === 'asc' ? 1 : -1 })
+            const photos = await Photo.find(
+                {
+                    album: { $in: [albumId] },
+                },
+                {
+                    _id: 1,
+                    title: 1,
+                    url: 1,
+                    owner: 1,
+                    createdAt: 1,
+                }
+            )
+                .sort({ createdAt: sort === 'asc' ? 1 : -1 })
                 .skip((parsedPage - 1) * parsedPageSize)
                 .limit(parsedPageSize)
                 .populate('owner', 'fullName username img');
 
             const hasNext = parsedPage < totalPages;
             const hasPrev = parsedPage > 1;
-            console.log(
-                parsedPage,
-                totalPages,
-                totalElements,
-                parsedPageSize,
-                hasNext,
-                hasPrev
-            );
 
-            res.json({
+            res.status(200).json({
                 pageMeta: {
                     totalPages,
                     page: parsedPage,
@@ -160,8 +174,6 @@ module.exports = {
                 },
                 photos,
             });
-
-            res.status(200).json(album);
         } catch (error) {
             next(error);
         }
