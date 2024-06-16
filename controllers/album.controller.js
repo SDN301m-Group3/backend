@@ -81,7 +81,7 @@ module.exports = {
             if (!album) {
                 throw createError(404, 'Album not found');
             }
-            res.json(album.members);
+            res.status(200).json(album);
         } catch (error) {
             next(error);
         }
@@ -91,7 +91,7 @@ module.exports = {
         try {
             const user = req.payload;
             const { albumId } = req.params;
-            const { sort = 'desc', page = 1, pageSize = 10 } = req.query;
+            const { sort = 'desc', page = 1, pageSize = 30 } = req.query;
 
             const parsedPage = parseInt(page);
             const parsedPageSize = parseInt(pageSize);
