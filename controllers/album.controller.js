@@ -2,6 +2,9 @@ const Album = require('../models/album.model');
 const createError = require('http-errors');
 const mongoose = require('mongoose');
 const Photo = require('../models/photo.model');
+const axios = require('axios');
+
+axios.defaults.baseURL = 'https://api.unsplash.com/';
 
 module.exports = {
     removeAlbum: async (req, res, next) => {
@@ -173,6 +176,58 @@ module.exports = {
                     hasPrev,
                 },
                 photos,
+            });
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    createRandomPhotos: async (req, res, next) => {
+        try {
+            const { albumId } = req.params;
+            const { number } = req.query;
+            const user = req.payload;
+            const album = await Album.findOne(
+                {
+                    _id: albumId,
+                    owner: user.aud,
+                    status: 'ACTIVE',
+                },
+                {
+                    _id: 1,
+                }
+            );
+
+            if (!album) {
+                throw createError(404, 'Album not found');
+            }
+
+            for (let i = 0; i < number; i++) {
+                const response = await axios.get(`/photos/random`, {
+                    params: {
+                        client_id: process.env.UNSPLASH_ACCESS_KEY,
+                    },
+                });
+                const url = response.data.urls.regular;
+                const title = response.data.alt_description.slice(0, 45);
+                const tags = response.data.slug.split('-');
+                tags.pop();
+
+                const photo = new Photo({
+                    title,
+                    url,
+                    owner: user.aud,
+                    tags,
+                });
+
+                const savedPhoto = await photo.save();
+                savedPhoto.addAlbum(albumId);
+
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+            }
+
+            res.status(201).send({
+                message: `${number} Photos created successfully`,
             });
         } catch (error) {
             next(error);

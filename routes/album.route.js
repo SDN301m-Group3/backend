@@ -33,4 +33,10 @@ albumRouter.get(
     AlbumController.getAlbumById
 );
 
+albumRouter.get(
+    '/:albumId/add-random-photos',
+    JwtConfig.verifyAccessToken,
+    AlbumController.createRandomPhotos
+);
+
 module.exports = albumRouter;
