@@ -94,7 +94,12 @@ module.exports = {
         try {
             const user = req.payload;
             const { albumId } = req.params;
-            const { sort = 'desc', page = 1, pageSize = 30 } = req.query;
+            const {
+                sort = 'desc',
+                page = 1,
+                pageSize = 30,
+                search = '',
+            } = req.query;
 
             const parsedPage = parseInt(page);
             const parsedPageSize = parseInt(pageSize);
@@ -128,6 +133,10 @@ module.exports = {
 
             const totalElements = await Photo.countDocuments({
                 album: { $in: [albumId] },
+                $or: [
+                    { title: { $regex: search, $options: 'i' } },
+                    { tags: { $in: [search] } },
+                ],
             });
 
             if (totalElements === 0) {
@@ -149,6 +158,10 @@ module.exports = {
             const photos = await Photo.find(
                 {
                     album: { $in: [albumId] },
+                    $or: [
+                        { title: { $regex: search, $options: 'i' } },
+                        { tags: { $in: [search] } },
+                    ],
                 },
                 {
                     _id: 1,
@@ -156,6 +169,7 @@ module.exports = {
                     url: 1,
                     owner: 1,
                     createdAt: 1,
+                    // tags: { $slice: 3 },
                 }
             )
                 .sort({ createdAt: sort === 'asc' ? 1 : -1 })
