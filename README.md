@@ -17,3 +17,8 @@ refactor: <description>    -> for commit that refactor or format code
 
 style: <description>       -> for commit that change style or related to style that doesn't affect to logic code (only for front-end)
 ```
+
+How to run:
+1. Create services: Database, Cache Database,...
+   ``` make init_services ```
+   Make sure you have Docker, Docker-compose
