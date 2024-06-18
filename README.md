@@ -19,6 +19,6 @@ style: <description>       -> for commit that change style or related to style t
 ```
 
 How to run:
-1. Create services: Database, Cache Database,...
-   ``` make init_services ```
+1. Create services: Database, Cache Database,... </br>
+   ``` make init_services ```   </br>
    Make sure you have Docker, Docker-compose
