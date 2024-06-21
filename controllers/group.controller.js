@@ -288,4 +288,22 @@ module.exports = {
             next(error);
         }
     },
+    removeGroup: async (req ,res ,next) => {
+        try {
+            const user = req.payload
+            const { groupId } = req.params
+            const group = await Group.findById(groupId)
+            if (!group) {
+                throw createError(404, 'Group not found');
+            }
+            if (group.owner._id.toString() !== user.aud) {
+                throw createError(403, 'You do not have permission to remove this group');
+            }
+            group.status = 'DELETED';
+            await group.save();
+            res.status(200).json(group);
+        } catch (error) {
+            next(error)
+        }
+    }
 };

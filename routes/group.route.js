@@ -51,4 +51,10 @@ groupRouter.post(
     GroupController.joinGroup
 );
 
+groupRouter.put(
+    '/remove/:groupId',
+    JwtConfig.verifyAccessToken,
+    GroupController.removeGroup
+);
+
 module.exports = groupRouter;
