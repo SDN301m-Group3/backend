@@ -143,19 +143,27 @@ module.exports = {
         try {
             const user = req.payload;
             const { groupId } = req.params;
+            const { search = '' } = req.query;
+            
             const albums = await Album.find(
                 {
                     group: groupId,
                     members: { $in: [user.aud] },
                     status: 'ACTIVE',
+                    $or: [
+                        { title: { $regex: search, $options: 'i' } },
+                        { description: { $regex: search, $options: 'i' } }
+                    ]
                 },
                 { _id: 1, title: 1, description: 1, photos: { $slice: -1 } }
             ).populate('photos', 'url');
+    
             res.json(albums);
         } catch (error) {
             next(error);
         }
     },
+    
     getMembersByGroupId: async (req, res, next) => {
         try {
             const user = req.payload;
