@@ -1,9 +1,11 @@
-const AlbumController = require("./album.controller");
-const AuthController = require("./auth.controller");
-const GroupController = require("./group.controller");
+const AlbumController = require('./album.controller');
+const AuthController = require('./auth.controller');
+const GroupController = require('./group.controller');
+const UserController = require('./user.controller');
 
 module.exports = {
-  AuthController,
-  GroupController,
-  AlbumController,
+    AuthController,
+    GroupController,
+    AlbumController,
+    UserController,
 };
