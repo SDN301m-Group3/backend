@@ -5,9 +5,13 @@ const {
 const Group = require('../models/group.model');
 const Album = require('../models/album.model');
 const User = require('../models/user.model');
+const Notification = require('../models/notification.model');
+const client = require('../configs/redis.config');
 
 const createError = require('http-errors');
 const mongoose = require('mongoose');
+const MailerService = require('../services/mailer.service');
+const { randomUUID } = require('crypto');
 
 // get all groups that user joins
 module.exports = {
@@ -144,7 +148,7 @@ module.exports = {
             const user = req.payload;
             const { groupId } = req.params;
             const { search = '' } = req.query;
-            
+
             const albums = await Album.find(
                 {
                     group: groupId,
@@ -152,18 +156,18 @@ module.exports = {
                     status: 'ACTIVE',
                     $or: [
                         { title: { $regex: search, $options: 'i' } },
-                        { description: { $regex: search, $options: 'i' } }
-                    ]
+                        { description: { $regex: search, $options: 'i' } },
+                    ],
                 },
                 { _id: 1, title: 1, description: 1, photos: { $slice: -1 } }
             ).populate('photos', 'url');
-    
+
             res.json(albums);
         } catch (error) {
             next(error);
         }
     },
-    
+
     getMembersByGroupId: async (req, res, next) => {
         try {
             const user = req.payload;
@@ -288,22 +292,142 @@ module.exports = {
             next(error);
         }
     },
-    removeGroup: async (req ,res ,next) => {
+    removeGroup: async (req, res, next) => {
         try {
-            const user = req.payload
-            const { groupId } = req.params
-            const group = await Group.findById(groupId)
+            const user = req.payload;
+            const { groupId } = req.params;
+            const group = await Group.findById(groupId);
             if (!group) {
                 throw createError(404, 'Group not found');
             }
             if (group.owner._id.toString() !== user.aud) {
-                throw createError(403, 'You do not have permission to remove this group');
+                throw createError(
+                    403,
+                    'You do not have permission to remove this group'
+                );
             }
             group.status = 'DELETED';
             await group.save();
             res.status(200).json(group);
         } catch (error) {
-            next(error)
+            next(error);
         }
-    }
+    },
+    inviteUserToGroup: async (req, res, next) => {
+        try {
+            const user = req.payload;
+            const { groupId } = req.params;
+            const { email } = req.body;
+
+            const group = await Group.findById({
+                _id: groupId,
+                members: { $in: [user.aud] },
+            });
+
+            if (!group) {
+                throw createError(404, 'Group not found');
+            }
+
+            const invitedUser = await User.findOne({
+                email,
+                status: 'ACTIVE',
+            });
+            if (!invitedUser) {
+                throw createError(404, 'User not found');
+            }
+
+            if (group.members.includes(invitedUser._id)) {
+                throw createError(400, 'User already joined this group');
+            }
+
+            const inviteToken = `${randomUUID()}${randomUUID()}`.replace(
+                /-/g,
+                ''
+            );
+
+            // 3 days
+            const INVITE_EXPIRED_TIME = 259200;
+
+            await client.set(
+                `inviteToken-${inviteToken}`,
+                JSON.stringify({
+                    userId: user.aud,
+                    groupId: group.id,
+                    invitedUserId: invitedUser._id,
+                }),
+                'EX',
+                INVITE_EXPIRED_TIME
+            );
+
+            const newNoti = await Notification.create({
+                user: user.aud,
+                type: 'USER',
+                receivers: invitedUser._id,
+                content: `You have been invited to join the group ${group.title}`,
+                redirectUrl: `/group/${group._id}/invite?inviteToken=${inviteToken}`,
+            });
+
+            await invitedUser.addNotification(newNoti._id);
+
+            await MailerService.sendInviteToGroupEmail(
+                invitedUser,
+                group,
+                inviteToken
+            );
+
+            res.status(200).json({
+                message: 'Invite email has been sent',
+            });
+        } catch (error) {
+            next(error);
+        }
+    },
+    acceptInvitationToGroup: async (req, res, next) => {
+        try {
+            const user = req.payload;
+            const { groupId } = req.params;
+            const inviteToken = req.query.inviteToken;
+
+            const inviteTokenData = await client.get(
+                `inviteToken-${inviteToken}`
+            );
+            if (!inviteTokenData) {
+                throw createError(400, 'Invalid invite token');
+            }
+
+            const {
+                userId: inviteTokenUserId,
+                groupId: inviteTokenGroupId,
+                invitedUserId,
+            } = JSON.parse(inviteTokenData);
+
+            if (invitedUserId !== user.aud || inviteTokenGroupId !== groupId) {
+                throw createError(400, 'Invalid invite token');
+            }
+
+            const group = await Group.findOne({
+                _id: groupId,
+                members: { $nin: [user.aud] },
+            });
+
+            if (!group) {
+                throw createError(404, 'Group not found or you already joined');
+            }
+
+            await group.addMember(invitedUserId);
+
+            // Update the user's group
+            await User.findOneAndUpdate(
+                { _id: invitedUserId },
+                { $push: { groups: group._id } },
+                { new: true }
+            );
+
+            await client.del(`inviteToken-${inviteToken}`);
+
+            res.status(200).json(group);
+        } catch (error) {
+            next(error);
+        }
+    },
 };
