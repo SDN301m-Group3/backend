@@ -203,11 +203,20 @@ module.exports = {
         try {
             const user = req.payload;
             const { groupId } = req.params;
+
+            const userAlbum = await Album.find({
+                members: { $in: [user.aud] },
+            }).select('_id');
+            const albumIds = userAlbum.map((album) => album._id);
+
+            console.log(albumIds);
+
             const group = await Group.findOne(
                 {
                     _id: groupId,
                     members: { $in: [user.aud] },
                     status: 'ACTIVE',
+                    albums: { $in: albumIds },
                 },
                 {
                     title: 1,
