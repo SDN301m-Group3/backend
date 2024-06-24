@@ -397,6 +397,15 @@ module.exports = {
             const { groupId } = req.params;
             const inviteToken = req.query.inviteToken;
 
+            const group = await Group.findOne({
+                _id: groupId,
+                members: { $nin: [user.aud] },
+            });
+
+            if (!group) {
+                throw createError(404, 'Group not found or you already joined');
+            }
+
             const inviteTokenData = await client.get(
                 `inviteToken-${inviteToken}`
             );
@@ -412,15 +421,6 @@ module.exports = {
 
             if (invitedUserId !== user.aud || inviteTokenGroupId !== groupId) {
                 throw createError(400, 'Invalid invite token');
-            }
-
-            const group = await Group.findOne({
-                _id: groupId,
-                members: { $nin: [user.aud] },
-            });
-
-            if (!group) {
-                throw createError(404, 'Group not found or you already joined');
             }
 
             await group.addMember(invitedUserId);
