@@ -3,6 +3,7 @@
 const { randomUUID } = require('crypto');
 const handlebars = require('handlebars');
 const inviteToGroup = require('../templates/inviteToGroup.template');
+const welcomeTemplate = require('../templates/welcome.template');
 const client = require('../configs/redis.config');
 const { NodemailerConfig } = require('../configs');
 

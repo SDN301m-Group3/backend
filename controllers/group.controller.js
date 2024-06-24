@@ -128,7 +128,7 @@ module.exports = {
             // Update the user's group
             await User.findOneAndUpdate(
                 { _id: user.aud },
-                { $push: { groups: savedGroup._id } },
+                { $addToSet: { groups: savedGroup._id } },
                 { new: true }
             );
 
@@ -204,19 +204,19 @@ module.exports = {
             const user = req.payload;
             const { groupId } = req.params;
 
-            const userAlbum = await Album.find({
-                members: { $in: [user.aud] },
-            }).select('_id');
-            const albumIds = userAlbum.map((album) => album._id);
+            // const userAlbum = await Album.find({
+            //     members: { $in: [user.aud] },
+            // }).select('_id');
+            // const albumIds = userAlbum.map((album) => album._id);
 
-            console.log(albumIds);
+            // console.log(albumIds);
 
             const group = await Group.findOne(
                 {
                     _id: groupId,
                     members: { $in: [user.aud] },
                     status: 'ACTIVE',
-                    albums: { $in: albumIds },
+                    // albums: { $in: albumIds },
                 },
                 {
                     title: 1,
@@ -257,7 +257,7 @@ module.exports = {
             await savedAlbum.addMember(user.aud);
             // if i add a album
             await Group.findByIdAndUpdate(req.params.groupId, {
-                $push: { albums: savedAlbum._id },
+                $addToSet: { albums: savedAlbum._id },
             });
             res.send(savedAlbum);
         } catch (error) {
@@ -292,7 +292,7 @@ module.exports = {
             // Update the user's group
             await User.findOneAndUpdate(
                 { _id: user.aud },
-                { $push: { groups: group._id } },
+                { $addToSet: { groups: group._id } },
                 { new: true }
             );
 
@@ -385,7 +385,20 @@ module.exports = {
             );
 
             res.status(200).json({
-                message: 'Invite email has been sent',
+                _id: newNoti._id,
+                user: {
+                    _id: user.aud,
+                    username: user.username,
+                    fullName: user.fullName,
+                    email: user.email,
+                    img: user.img,
+                },
+                type: newNoti.type,
+                content: newNoti.content,
+                redirectUrl: newNoti.redirectUrl,
+                createdAt: newNoti.createdAt,
+                receivers: invitedUser._id,
+                seen: newNoti.seen,
             });
         } catch (error) {
             next(error);
@@ -396,6 +409,15 @@ module.exports = {
             const user = req.payload;
             const { groupId } = req.params;
             const inviteToken = req.query.inviteToken;
+
+            const group = await Group.findOne({
+                _id: groupId,
+                members: { $nin: [user.aud] },
+            });
+
+            if (!group) {
+                throw createError(404, 'Group not found or you already joined');
+            }
 
             const inviteTokenData = await client.get(
                 `inviteToken-${inviteToken}`
@@ -410,17 +432,17 @@ module.exports = {
                 invitedUserId,
             } = JSON.parse(inviteTokenData);
 
-            if (invitedUserId !== user.aud || inviteTokenGroupId !== groupId) {
-                throw createError(400, 'Invalid invite token');
+            if (
+                !(await Group.findOne({
+                    _id: inviteTokenGroupId,
+                    members: { $in: [inviteTokenUserId] },
+                }))
+            ) {
+                throw createError(400, 'Invalid user invite');
             }
 
-            const group = await Group.findOne({
-                _id: groupId,
-                members: { $nin: [user.aud] },
-            });
-
-            if (!group) {
-                throw createError(404, 'Group not found or you already joined');
+            if (invitedUserId !== user.aud || inviteTokenGroupId !== groupId) {
+                throw createError(400, 'Invalid group or user invite');
             }
 
             await group.addMember(invitedUserId);
@@ -428,7 +450,7 @@ module.exports = {
             // Update the user's group
             await User.findOneAndUpdate(
                 { _id: invitedUserId },
-                { $push: { groups: group._id } },
+                { $addToSet: { groups: group._id } },
                 { new: true }
             );
 
