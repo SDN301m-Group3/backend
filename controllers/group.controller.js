@@ -216,7 +216,7 @@ module.exports = {
                     _id: groupId,
                     members: { $in: [user.aud] },
                     status: 'ACTIVE',
-                    albums: { $in: albumIds },
+                    // albums: { $in: albumIds },
                 },
                 {
                     title: 1,
