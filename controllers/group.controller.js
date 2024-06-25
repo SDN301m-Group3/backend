@@ -20,7 +20,12 @@ module.exports = {
             const user = req.payload;
 
             const groups = await Group.aggregate([
-                { $match: { members: new mongoose.Types.ObjectId(user.aud) } },
+                {
+                    $match: {
+                        members: new mongoose.Types.ObjectId(user.aud),
+                        status: 'ACTIVE',
+                    },
+                },
                 {
                     $lookup: {
                         from: 'users',
@@ -60,7 +65,12 @@ module.exports = {
             //     .populate('owner', 'fullName email')
 
             const groups = await Group.aggregate([
-                { $match: { owner: new mongoose.Types.ObjectId(user.aud) } },
+                {
+                    $match: {
+                        owner: new mongoose.Types.ObjectId(user.aud),
+                        status: 'ACTIVE',
+                    },
+                },
                 {
                     $lookup: {
                         from: 'users',
