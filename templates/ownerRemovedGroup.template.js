@@ -1,10 +1,10 @@
-const inviteToGroup = `
+const ownerRemovedGroup = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Group Invitation</title>
+    <title>Group Deletion Notification</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -23,7 +23,6 @@ const inviteToGroup = `
         }
         .header {
             text-align: center;
-            width: 100%;
             padding: 10px 0;
         }
         .header img {
@@ -40,18 +39,6 @@ const inviteToGroup = `
             font-size: 16px;
             color: #555555;
         }
-        .btn-container {
-            text-align: center;
-            margin: 30px 0;
-        }
-        .btn {
-            background-color: #007bff;
-            color: #ffffff;
-            padding: 10px 20px;
-            text-decoration: none;
-            border-radius: 5px;
-            font-size: 16px;
-        }
         .footer {
             text-align: center;
             padding: 10px 0;
@@ -66,13 +53,11 @@ const inviteToGroup = `
             <img src="{{groupImg}}" alt="Group Image">
         </div>
         <div class="content">
-            <h1>You're Invited!</h1>
-            <p>Hello {{username}},</p>
-            <p>We are excited to invite you to join our group, {{group}}. By joining, you'll be able to connect with like-minded individuals, participate in exclusive events, and much more.</p>
-            <p>Click the button below to accept your invitation and become a part of our community.</p>
-        </div>
-        <div class="btn-container">
-            <a href="{{joinLink}}" class="btn">Join Now</a>
+            <h1>Important Notice: Group Deleted</h1>
+            <p>Dear {{username}},</p>
+            <p>We regret to inform you that the group, <strong>{{group}}</strong>, has been deleted by the owner.</p>
+            <p>We understand that this may come as unexpected news. If you have any questions or need further assistance, please do not hesitate to contact our support team.</p>
+            <p>Thank you for your understanding.</p>
         </div>
         <div class="footer">
             <p>If you have any questions, don't contact us =))).</p>
@@ -81,7 +66,6 @@ const inviteToGroup = `
     </div>
 </body>
 </html>
+`;
 
-  `;
-
-module.exports = inviteToGroup;
+module.exports = ownerRemovedGroup;

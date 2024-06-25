@@ -327,7 +327,45 @@ module.exports = {
             }
             group.status = 'DELETED';
             await group.save();
-            res.status(200).json(group);
+
+            const newNoti = await Notification.create({
+                user: user.aud,
+                type: 'GROUP',
+                receivers: group._id,
+                content: `The group ${group.title} has been deleted by the owner`,
+                redirectUrl: `#`,
+            });
+
+            group.members.forEach(async (member) => {
+                if (member.toString() === user.aud) return;
+                const memberNoti = await User.findById({
+                    _id: member,
+                });
+                await memberNoti.addNotification(newNoti._id);
+
+                await MailerService.sendOwnerRemovedGroupEmail(
+                    memberNoti,
+                    group
+                );
+            });
+
+            res.status(200).json({
+                _id: newNoti._id,
+                user: {
+                    _id: user.aud,
+                    username: user.username,
+                    fullName: user.fullName,
+                    email: user.email,
+                    img: user.img,
+                },
+                type: newNoti.type,
+                content: newNoti.content,
+                redirectUrl: newNoti.redirectUrl,
+                createdAt: newNoti.createdAt,
+                receivers: group.members,
+                seen: newNoti.seen,
+                groupId: group._id,
+            });
         } catch (error) {
             next(error);
         }
