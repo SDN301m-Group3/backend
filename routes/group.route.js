@@ -52,7 +52,7 @@ groupRouter.post(
 );
 
 groupRouter.put(
-    '/remove/:groupId',
+    '/:groupId/remove',
     JwtConfig.verifyAccessToken,
     GroupController.removeGroup
 );
