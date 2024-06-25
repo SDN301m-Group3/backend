@@ -5,6 +5,7 @@ const handlebars = require('handlebars');
 const inviteToGroup = require('../templates/inviteToGroup.template');
 const welcomeTemplate = require('../templates/welcome.template');
 const ownerRemovedGroup = require('../templates/ownerRemovedGroup.template');
+const removeUserFromGroup = require('../templates/removeUserFromGroup.template');
 const client = require('../configs/redis.config');
 const { NodemailerConfig } = require('../configs');
 
@@ -79,6 +80,27 @@ class MailerService {
             to: user.email,
             subject: `Important Notice: Group Deleted`,
             text: `Dear ${user.username}, We regret to inform you that the group, ${group.title}, has been deleted by the owner. We understand that this may come as unexpected news. If you have any questions or need further assistance, please do not hesitate to contact our support team. Thank you for your understanding.`,
+            html: htmlToSend,
+        };
+
+        await NodemailerConfig.transporter.sendMail(mailOptions);
+
+        return mailOptions;
+    }
+    async sendRemoveUserFromGroupEmail(user, group) {
+        const template = handlebars.compile(removeUserFromGroup);
+        const htmlToSend = template({
+            username: user.username,
+            group: group.title,
+            groupImg: group.groupImg,
+            siteConfigName: process.env.FRONTEND_SITE_NAME,
+        });
+
+        const mailOptions = {
+            from: process.env.EMAIL_NAME,
+            to: user.email,
+            subject: `Group Membership Update`,
+            text: `Dear ${user.username}, We regret to inform you that you have been removed from the group, ${group.title}, by the group owner. If you have any questions or need further information regarding this decision, please feel free to reach out to our support team. Thank you for your understanding.`,
             html: htmlToSend,
         };
 

@@ -509,4 +509,79 @@ module.exports = {
             next(error);
         }
     },
+    removeUserFromGroup: async (req, res, next) => {
+        try {
+            const user = req.payload;
+            const { groupId, userId } = req.params;
+
+            const group = await Group.findById(groupId);
+            if (!group) {
+                throw createError(404, 'Group not found');
+            }
+
+            const userToRemove = await User.findById(userId);
+            if (!userToRemove) {
+                throw createError(404, 'User not found');
+            }
+
+            if (group.owner.toString() !== user.aud) {
+                throw createError(403, 'You do not have permission');
+            }
+
+            if (group.owner.toString() === userId) {
+                throw createError(403, 'You cannot remove yourself');
+            }
+
+            if (!group.members.includes(userId)) {
+                throw createError(404, 'User not found in group');
+            }
+
+            await group.removeMember(userId);
+
+            userToRemove.removeGroup(groupId);
+
+            // Remove user from all albums in the group
+            const albums = await Album.find({
+                group: groupId,
+                members: { $in: [userId] },
+            });
+            for (const album of albums) {
+                await album.removeMember(userId);
+            }
+
+            const newNoti = await Notification.create({
+                user: user.aud,
+                type: 'USER',
+                receivers: userId,
+                content: `You have been removed from the group ${group.title}`,
+                redirectUrl: `#`,
+            });
+
+            await userToRemove.addNotification(newNoti._id);
+
+            await MailerService.sendRemoveUserFromGroupEmail(
+                userToRemove,
+                group
+            );
+
+            res.status(200).json({
+                _id: newNoti._id,
+                user: {
+                    _id: user.aud,
+                    username: user.username,
+                    fullName: user.fullName,
+                    email: user.email,
+                    img: user.img,
+                },
+                type: newNoti.type,
+                content: newNoti.content,
+                redirectUrl: newNoti.redirectUrl,
+                createdAt: newNoti.createdAt,
+                receivers: userId,
+                seen: newNoti.seen,
+            });
+        } catch (error) {
+            next(error);
+        }
+    },
 };

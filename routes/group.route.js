@@ -69,4 +69,11 @@ groupRouter.post(
     GroupController.acceptInvitationToGroup
 );
 
+// remove user from group
+groupRouter.put(
+    '/:groupId/remove-user/:userId',
+    JwtConfig.verifyAccessToken,
+    GroupController.removeUserFromGroup
+);
+
 module.exports = groupRouter;
