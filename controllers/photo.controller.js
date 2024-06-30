@@ -1,7 +1,10 @@
 const db = require('../models');
 const createError = require('http-errors');
 const Photo = db.photo;
-const axios = require('axios');
+const Album = db.album;
+const User = db.user;
+const Notification = db.notification;
+const MailerService = require('../services/mailer.service');
 const comment = db.comment;
 
 // export type PhotoDetail = {
@@ -76,6 +79,88 @@ module.exports = {
                 )
                 .populate('user', '_id fullName username email');
             res.status(200).json(comments);
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    createComment: async (req, res, next) => {
+        try {
+            const { id } = req.params;
+            const user = req.payload;
+            const album = await Album.findOne(
+                {
+                    photos: { $in: [id] },
+                    status: 'ACTIVE',
+                    members: { $in: [user.aud] },
+                },
+                { _id: 1 }
+            );
+
+            if (!album) {
+                throw createError.Unauthorized(
+                    'You are not allowed to comment on this photo'
+                );
+            }
+            const { content } = req.body;
+            const newComment = new comment({
+                content,
+                user: user.aud,
+                photo: id,
+            });
+            await newComment.save();
+
+            await Photo.updateOne(
+                { _id: id },
+                { $push: { comments: newComment._id } }
+            );
+
+            await User.updateOne(
+                { _id: user.aud },
+                { $push: { comments: newComment._id } }
+            );
+
+            const photo = await Photo.findOne(
+                { _id: id },
+                { owner: 1, title: 1, url: 1 }
+            ).populate('owner', '_id username email');
+
+            if (user.aud === photo.owner._id.toString()) {
+                res.status(200).json(newComment);
+                return;
+            }
+
+            const newNoti = await Notification.create({
+                user: user.aud,
+                type: 'USER',
+                receivers: photo.owner._id,
+                content: `${user.username} commented on your photo ${photo?.title}`,
+                redirectUrl: `/photo/${id}`,
+            });
+
+            await User.updateOne(
+                { _id: photo.owner._id },
+                { $push: { notifications: newNoti._id } }
+            );
+
+            await MailerService.sendUserLikePhotoEmail(user, photo, newComment);
+
+            res.status(200).json({
+                _id: newNoti._id,
+                user: {
+                    _id: user.aud,
+                    username: user.username,
+                    fullName: user.fullName,
+                    email: user.email,
+                    img: user.img,
+                },
+                type: newNoti.type,
+                content: newNoti.content,
+                redirectUrl: newNoti.redirectUrl,
+                createdAt: newNoti.createdAt,
+                receivers: photo.owner._id,
+                seen: newNoti.seen,
+            });
         } catch (error) {
             next(error);
         }
