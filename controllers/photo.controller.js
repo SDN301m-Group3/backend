@@ -5,29 +5,7 @@ const React = db.react;
 const Comment = db.comment;
 const Album = db.album;
 const mongoose = require('mongoose');
-
-// export type PhotoDetail = {
-//   _id: string;
-//   title: string;
-//   tags: string[];
-//   url: string;
-//   createdAt: string;
-//   owner: {
-//       _id: string;
-//       fullName: string;
-//       username: string;
-//       email: string;
-//       img: string;
-//   };
-//   group: {
-//       _id: string;
-//       title: string;
-//   };
-//   album: {
-//       _id: string;
-//       title: string;
-//   };
-// };
+const { pagination } = require('../middlewares/pagination');
 
 module.exports = {
     getPhotoById: async (req, res, next) => {
@@ -103,6 +81,12 @@ module.exports = {
             const { id } = req.params;
             const user = req.payload;
 
+            const { sort, page, pageSize, search } = await pagination(
+                req,
+                res,
+                next
+            );
+
             const album = await Album.findOne(
                 {
                     photos: { $in: [id] },
@@ -119,6 +103,28 @@ module.exports = {
                 );
             }
 
+            const totalElements = await Comment.countDocuments({
+                photo: id,
+            });
+
+            if (totalElements === 0) {
+                return res.status(200).json({
+                    pageMeta: {
+                        totalPages: 0,
+                        page,
+                        totalElements: 0,
+                        pageSize,
+                        hasNext: false,
+                        hasPrev: false,
+                    },
+                    comments: [],
+                });
+            }
+
+            const totalPages = Math.ceil(totalElements / pageSize);
+            const hasNext = page < totalPages;
+            const hasPrev = page > 1;
+
             const comments = await Comment.find(
                 {
                     photo: id,
@@ -129,11 +135,27 @@ module.exports = {
                     content: 1,
                     createdAt: 1,
                 }
-            ).populate('user', '_id fullName username email');
+            )
+                .sort({ createdAt: sort === 'asc' ? 1 : -1 })
+                .skip((page - 1) * pageSize)
+                .limit(pageSize)
+                .populate('user', '_id fullName username email');
+
             if (!comments) {
                 throw createError(404, 'Comments not found');
             }
-            res.status(200).json(comments);
+
+            res.status(200).json({
+                pageMeta: {
+                    totalPages,
+                    page,
+                    totalElements,
+                    pageSize,
+                    hasNext,
+                    hasPrev,
+                },
+                comments,
+            });
         } catch (error) {
             next(error);
         }

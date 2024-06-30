@@ -3,6 +3,7 @@ const createError = require('http-errors');
 const mongoose = require('mongoose');
 const Photo = require('../models/photo.model');
 const axios = require('axios');
+const { pagination } = require('../middlewares/pagination');
 
 axios.defaults.baseURL = 'https://api.unsplash.com/';
 
@@ -94,27 +95,12 @@ module.exports = {
         try {
             const user = req.payload;
             const { albumId } = req.params;
-            const {
-                sort = 'desc',
-                page = 1,
-                pageSize = 30,
-                search = '',
-            } = req.query;
 
-            const parsedPage = parseInt(page);
-            const parsedPageSize = parseInt(pageSize);
-            if (isNaN(parsedPage)) {
-                throw createError(400, 'Invalid page value');
-            }
-            if (isNaN(parsedPageSize)) {
-                throw createError(400, 'Invalid pageSize value');
-            }
-            if (parsedPageSize > 30) {
-                throw createError(400, 'pageSize must be at most 30');
-            }
-            if (parsedPageSize < 1) {
-                throw createError(400, 'pageSize must be at least 1');
-            }
+            const { sort, page, pageSize, search } = await pagination(
+                req,
+                res,
+                next
+            );
 
             const album = await Album.findOne(
                 {
@@ -143,9 +129,9 @@ module.exports = {
                 return res.status(200).json({
                     pageMeta: {
                         totalPages: 0,
-                        page: parsedPage,
+                        page,
                         totalElements: 0,
-                        pageSize: parsedPageSize,
+                        pageSize,
                         hasNext: false,
                         hasPrev: false,
                     },
@@ -153,7 +139,10 @@ module.exports = {
                 });
             }
 
-            const totalPages = Math.ceil(totalElements / parsedPageSize);
+            const totalPages = Math.ceil(totalElements / pageSize);
+
+            const hasNext = page < totalPages;
+            const hasPrev = page > 1;
 
             const photos = await Photo.find(
                 {
@@ -173,19 +162,16 @@ module.exports = {
                 }
             )
                 .sort({ createdAt: sort === 'asc' ? 1 : -1 })
-                .skip((parsedPage - 1) * parsedPageSize)
-                .limit(parsedPageSize)
+                .skip((page - 1) * pageSize)
+                .limit(pageSize)
                 .populate('owner', 'fullName username img');
-
-            const hasNext = parsedPage < totalPages;
-            const hasPrev = parsedPage > 1;
 
             res.status(200).json({
                 pageMeta: {
                     totalPages,
-                    page: parsedPage,
+                    page,
                     totalElements,
-                    pageSize: parsedPageSize,
+                    pageSize,
                     hasNext,
                     hasPrev,
                 },
