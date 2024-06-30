@@ -4,6 +4,7 @@ const Photo = db.photo;
 const React = db.react;
 const Comment = db.comment;
 const Album = db.album;
+const mongoose = require('mongoose');
 
 // export type PhotoDetail = {
 //   _id: string;
@@ -120,7 +121,7 @@ module.exports = {
 
             const comments = await Comment.find(
                 {
-                    photoId: id,
+                    photo: id,
                     status: 'ACTIVE',
                 },
                 {
@@ -161,8 +162,7 @@ module.exports = {
 
             const reacts = await React.find(
                 {
-                    photoId: id,
-                    status: 'ACTIVE',
+                    photo: id,
                 },
                 {
                     _id: 1,
@@ -173,6 +173,75 @@ module.exports = {
                 throw createError(404, 'Reacts not found');
             }
             res.status(200).json(reacts);
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    addCommentToPhoto: async (req, res, next) => {
+        try {
+            const { id } = req.params;
+            const user = req.payload;
+            const { content } = req.body;
+
+            const album = await Album.findOne(
+                {
+                    photos: { $in: [id] },
+                    status: 'ACTIVE',
+                    members: { $in: [user.aud] },
+                },
+                { _id: 1 }
+            );
+
+            if (!album) {
+                throw createError(
+                    403,
+                    'You do not have permission to access this photo'
+                );
+            }
+
+            console.log(id, user.aud, content);
+            const comment = new Comment({
+                photo: new mongoose.Types.ObjectId(id),
+                user: new mongoose.Types.ObjectId(user.aud),
+                content,
+            });
+            console.log(comment);
+            await comment.save();
+            console.log('210');
+            res.status(201).json(comment);
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    addReactToPhoto: async (req, res, next) => {
+        try {
+            const { id } = req.params;
+            const user = req.payload;
+
+            const album = await Album.findOne(
+                {
+                    photos: { $in: [id] },
+                    status: 'ACTIVE',
+                    members: { $in: [user.aud] },
+                },
+                { _id: 1 }
+            );
+
+            if (!album) {
+                throw createError(
+                    403,
+                    'You do not have permission to access this photo'
+                );
+            }
+
+            const react = new React({
+                photo: new mongoose.Types.ObjectId(id),
+                user: new mongoose.Types.ObjectId(user.aud),
+            });
+            await react.save();
+            res.status(201).json(react);
         } catch (error) {
             next(error);
         }

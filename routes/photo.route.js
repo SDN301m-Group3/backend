@@ -21,4 +21,16 @@ photoRouter.get(
     PhotoController.getReactByPhotoId
 );
 
+photoRouter.post(
+    '/:id/comments',
+    JwtConfig.verifyAccessToken,
+    PhotoController.addCommentToPhoto
+);
+
+photoRouter.post(
+    '/:id/reacts',
+    JwtConfig.verifyAccessToken,
+    PhotoController.addReactToPhoto
+);
+
 module.exports = photoRouter;
