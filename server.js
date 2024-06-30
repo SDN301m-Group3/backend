@@ -10,6 +10,8 @@ const {
     AlbumRouter,
     UserRouter,
     NotificationRouter,
+    PhotoRouter,
+    CommentRouter,
 } = require('./routes');
 
 const { JwtConfig } = require('./configs');
@@ -37,6 +39,8 @@ app.use('/groups', GroupRouter);
 app.use('/albums', AlbumRouter);
 app.use('/users', UserRouter);
 app.use('/notifications', NotificationRouter);
+app.use('/photos', PhotoRouter);
+app.use('/comments', CommentRouter);
 
 app.use(async (req, res, next) => {
     next(createError.NotFound());
