@@ -20,4 +20,10 @@ photoRouter.post(
     PhotoController.createComment
 );
 
+photoRouter.post(
+    '/:id/comment',
+    JwtConfig.verifyAccessToken,
+    PhotoController.createComment
+);
+
 module.exports = photoRouter;
