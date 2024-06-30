@@ -3,12 +3,10 @@ const Schema = mongoose.Schema;
 
 const PhotoSchema = new Schema(
     {
-        album: [
-            {
-                type: Schema.Types.ObjectId,
-                ref: 'album',
-            },
-        ],
+        album: {
+            type: Schema.Types.ObjectId,
+            ref: 'album',
+        },
         owner: {
             type: Schema.Types.ObjectId,
             ref: 'user',
