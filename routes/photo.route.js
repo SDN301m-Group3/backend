@@ -15,4 +15,10 @@ photoRouter.get(
     PhotoController.getCommentByPhotoId
 );
 
+photoRouter.get(
+    '/:id/reacts',
+    JwtConfig.verifyAccessToken,
+    PhotoController.getReactByPhotoId
+);
+
 module.exports = photoRouter;

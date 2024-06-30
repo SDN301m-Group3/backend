@@ -1,9 +1,9 @@
 const db = require('../models');
 const createError = require('http-errors');
-const Group = require('../models/group.model');
 const Photo = db.photo;
+const React = db.react;
 const Comment = db.comment;
-// const React = require('react');
+const Album = db.album;
 
 // export type PhotoDetail = {
 //   _id: string;
@@ -33,8 +33,27 @@ module.exports = {
         try {
             const { id } = req.params;
             const user = req.payload;
+
+            const album = await Album.findOne(
+                {
+                    photos: { $in: [id] },
+                    status: 'ACTIVE',
+                    members: { $in: [user.aud] },
+                },
+                { _id: 1 }
+            );
+
+            console.log(await Album.findOne({ photos: { $in: [id] } }));
+
+            if (!album) {
+                throw createError(
+                    403,
+                    'You do not have permission to access this photo'
+                );
+            }
+
             const photo = await Photo.findOne(
-                { _id: id, status: 'ACTIVE', owner: user.aud },
+                { _id: id, status: 'ACTIVE' },
                 {
                     _id: 1,
                     title: 1,
@@ -81,6 +100,24 @@ module.exports = {
     getCommentByPhotoId: async (req, res, next) => {
         try {
             const { id } = req.params;
+            const user = req.payload;
+
+            const album = await Album.findOne(
+                {
+                    photos: { $in: [id] },
+                    status: 'ACTIVE',
+                    members: { $in: [user.aud] },
+                },
+                { _id: 1 }
+            );
+
+            if (!album) {
+                throw createError(
+                    403,
+                    'You do not have permission to access this photo'
+                );
+            }
+
             const comments = await Comment.find(
                 {
                     photoId: id,
@@ -92,29 +129,52 @@ module.exports = {
                     createdAt: 1,
                 }
             ).populate('user', '_id fullName username email');
+            if (!comments) {
+                throw createError(404, 'Comments not found');
+            }
             res.status(200).json(comments);
         } catch (error) {
             next(error);
         }
     },
 
-    // getReactByPhotoId: async (req, res, next) => {
-    //     try {
-    //         const { id } = req.params;
-    //         const reacts = await React.find(
-    //             {
-    //                 photoId: id,
-    //                 status: 'ACTIVE',
-    //             },
-    //             {
-    //                 _id: 1,
-    //                 type: 1,
-    //                 createdAt: 1,
-    //             }
-    //         ).populate('user', '_id fullName username email');
-    //         res.status(200).json(reacts);
-    //     } catch (error) {
-    //         next(error);
-    //     }
-    // }
+    getReactByPhotoId: async (req, res, next) => {
+        try {
+            const { id } = req.params;
+            const user = req.payload;
+
+            const album = await Album.findOne(
+                {
+                    photos: { $in: [id] },
+                    status: 'ACTIVE',
+                    members: { $in: [user.aud] },
+                },
+                { _id: 1 }
+            );
+
+            if (!album) {
+                throw createError(
+                    403,
+                    'You do not have permission to access this photo'
+                );
+            }
+
+            const reacts = await React.find(
+                {
+                    photoId: id,
+                    status: 'ACTIVE',
+                },
+                {
+                    _id: 1,
+                    createdAt: 1,
+                }
+            ).populate('user', '_id fullName username email');
+            if (!reacts) {
+                throw createError(404, 'Reacts not found');
+            }
+            res.status(200).json(reacts);
+        } catch (error) {
+            next(error);
+        }
+    },
 };
