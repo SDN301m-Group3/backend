@@ -14,23 +14,10 @@ photoRouter.get(
     JwtConfig.verifyAccessToken,
     PhotoController.getCommentByPhotoId
 );
-
-photoRouter.get(
-    '/:id/reacts',
-    JwtConfig.verifyAccessToken,
-    PhotoController.getReactByPhotoId
-);
-
 photoRouter.post(
-    '/:id/comments',
+    '/:id/comment',
     JwtConfig.verifyAccessToken,
-    PhotoController.addCommentToPhoto
-);
-
-photoRouter.post(
-    '/:id/reacts',
-    JwtConfig.verifyAccessToken,
-    PhotoController.addReactToPhoto
+    PhotoController.createComment
 );
 
 module.exports = photoRouter;

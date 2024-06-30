@@ -8,6 +8,7 @@ const ownerRemovedGroup = require('../templates/ownerRemovedGroup.template');
 const removeUserFromGroup = require('../templates/removeUserFromGroup.template');
 const client = require('../configs/redis.config');
 const { NodemailerConfig } = require('../configs');
+const likePhoto = require('../templates/likePhoto.template');
 
 const EXPIRED_TIME = 900;
 
@@ -101,6 +102,29 @@ class MailerService {
             to: user.email,
             subject: `Group Membership Update`,
             text: `Dear ${user.username}, We regret to inform you that you have been removed from the group, ${group.title}, by the group owner. If you have any questions or need further information regarding this decision, please feel free to reach out to our support team. Thank you for your understanding.`,
+            html: htmlToSend,
+        };
+
+        await NodemailerConfig.transporter.sendMail(mailOptions);
+
+        return mailOptions;
+    }
+    async sendUserLikePhotoEmail(user, photo, comment) {
+        const template = handlebars.compile(likePhoto);
+        const htmlToSend = template({
+            ownerUsername: photo?.owner?.username,
+            photoUrl: photo?.url,
+            commentUsername: user?.username,
+            content: comment?.content,
+            redirectUrl: `${process.env.FRONTEND_URL}/photo/${photo?._id}`,
+            siteConfigName: process.env.FRONTEND_SITE_NAME,
+        });
+
+        const mailOptions = {
+            from: process.env.EMAIL_NAME,
+            to: photo.owner.email,
+            subject: `${user.username} commented on your photo`,
+            text: `${user.username} commented on your photo. Click the link to view the comment: ${process.env.FRONTEND_URL}/photo/${photo.id}`,
             html: htmlToSend,
         };
 
