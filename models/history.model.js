@@ -11,7 +11,7 @@ const HistorySchema = new Schema(
         actionType: {
             type: String,
             required: true,
-            enum: ['CREATE', 'UPDATE', 'DELETE', 'COMMENT', 'REACT'],
+            enum: ['CREATE', 'UPDATE', 'DELETE', 'VIEW'],
         },
         photo: {
             type: Schema.Types.ObjectId,

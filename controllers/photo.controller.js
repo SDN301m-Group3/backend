@@ -4,6 +4,8 @@ const Photo = db.photo;
 const React = db.react;
 const Comment = db.comment;
 const Album = db.album;
+const History = db.history;
+const User = db.user;
 const mongoose = require('mongoose');
 const { pagination } = require('../middlewares/pagination');
 
@@ -22,14 +24,23 @@ module.exports = {
                 { _id: 1 }
             );
 
-            console.log(await Album.findOne({ photos: { $in: [id] } }));
-
             if (!album) {
                 throw createError(
                     403,
                     'You do not have permission to access this photo'
                 );
             }
+
+            const history = new History({
+                user: user.aud,
+                photo: id,
+                actionType: 'VIEW',
+            });
+            await history.save();
+            await User.findOneAndUpdate(
+                { _id: user.aud },
+                { $addToSet: { history: history._id } }
+            );
 
             const photo = await Photo.findOne(
                 { _id: id, status: 'ACTIVE' },
@@ -222,15 +233,12 @@ module.exports = {
                 );
             }
 
-            console.log(id, user.aud, content);
             const comment = new Comment({
                 photo: new mongoose.Types.ObjectId(id),
                 user: new mongoose.Types.ObjectId(user.aud),
                 content,
             });
-            console.log(comment);
             await comment.save();
-            console.log('210');
             res.status(201).json(comment);
         } catch (error) {
             next(error);
