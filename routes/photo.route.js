@@ -14,6 +14,11 @@ photoRouter.get(
     JwtConfig.verifyAccessToken,
     PhotoController.getCommentByPhotoId
 );
+photoRouter.post(
+    '/:id/comment',
+    JwtConfig.verifyAccessToken,
+    PhotoController.createComment
+);
 
 photoRouter.post(
     '/:id/comment',
