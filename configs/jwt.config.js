@@ -4,12 +4,13 @@ const client = require('./redis.config');
 const os = require('os');
 
 module.exports = {
-    signAccessToken: user => {
+    signAccessToken: (user) => {
         return new Promise((resolve, reject) => {
             const payload = {
                 email: user.email,
                 username: user.username,
                 fullName: user.fullName,
+                img: user.img,
             };
             const secret = process.env.ACCESS_TOKEN_SECRET;
             const options = {
@@ -44,7 +45,7 @@ module.exports = {
             next();
         });
     },
-    signRefreshToken: userId => {
+    signRefreshToken: (userId) => {
         return new Promise((resolve, reject) => {
             const payload = {};
             const secret = process.env.REFRESH_TOKEN_SECRET;
@@ -70,7 +71,7 @@ module.exports = {
             });
         });
     },
-    verifyRefreshToken: refreshToken => {
+    verifyRefreshToken: (refreshToken) => {
         return new Promise((resolve, reject) => {
             JWT.verify(
                 refreshToken,

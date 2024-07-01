@@ -49,11 +49,17 @@ const GroupSchema = new Schema(
 );
 
 GroupSchema.methods.addAlbum = function (albumId) {
+    if (this.albums.includes(albumId)) {
+        return this;
+    }
     this.albums.push(albumId);
     return this.save();
 };
 
 GroupSchema.methods.addMember = function (userId) {
+    if (this.members.includes(userId)) {
+        return this;
+    }
     this.members.push(userId);
     return this.save();
 };

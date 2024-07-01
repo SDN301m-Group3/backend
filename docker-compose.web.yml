@@ -11,7 +11,7 @@ services:
       - DB_NAME=$MONGODB_NAME
       - DB_USER=${MONGODB_USERNAME:-root}
       - DB_PASSWORD=${MONGODB_PASSWORD:-root}
-      - DB_PORT=27017
+      - DB_PORT=${MONGODB_PORT:-27017}
     depends_on:
       - mongodb
     volumes:
