@@ -2,6 +2,7 @@ const express = require("express");
 const morgan = require("morgan");
 const createError = require("http-errors");
 const db = require("./models");
+const cors = require("cors");
 
 const { AuthRouter, GroupRouter, AlbumRouter } = require("./routes");
 
@@ -13,6 +14,10 @@ const app = express();
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cors({
+  origin: process.env.FRONTEND_URL,
+  optionsSuccessStatus: 200
+}))
 
 // Demo data
 const users = [
@@ -38,10 +43,10 @@ app.use(async (req, res, next) => {
 });
 
 app.use((err, req, res, next) => {
-  res.status(err.status || 500);
+  res.status(err.status || 400);
   res.send({
     error: {
-      status: err.status || 500,
+      status: err.status || 400,
       message: err.message,
     },
   });
