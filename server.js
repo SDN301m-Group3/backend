@@ -46,13 +46,13 @@ app.use(async (req, res, next) => {
 });
 
 app.use((err, req, res, next) => {
-    res.status(err.status || 500);
-    res.send({
-        error: {
-            status: err.status || 500,
-            message: err.message,
-        },
-    });
+  res.status(err.status || 400);
+  res.send({
+    error: {
+      status: err.status || 400,
+      message: err.message,
+    },
+  });
 });
 
 const PORT = process.env.PORT || 9999;
