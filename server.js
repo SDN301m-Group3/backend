@@ -3,6 +3,7 @@ const morgan = require('morgan');
 const cors = require('cors');
 const createError = require('http-errors');
 const db = require('./models');
+require('dotenv').config();
 
 const {
     AuthRouter,
@@ -16,19 +17,15 @@ const {
 
 const { JwtConfig } = require('./configs');
 
-require('dotenv').config();
-
 const app = express();
 app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-const corsOptions = {
-    origin: 'http://localhost:3000',
-    credentials: true, //access-control-allow-credentials:true
-    optionSuccessStatus: 200,
-};
-app.use(cors(corsOptions));
+app.use(cors({
+  origin: process.env.FRONTEND_URL,
+  credentials: true, //access-control-allow-credentials:true
+  optionSuccessStatus: 200,
+}));
 
 app.get('/', JwtConfig.verifyAccessToken, async (req, res, next) => {
     res.send('Hello from express');
