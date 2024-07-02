@@ -2,32 +2,38 @@ const multer = require('multer');
 const multerS3 = require('multer-s3');
 const s3Client = require('../configs/storage.config');
 const httpError = require('http-errors');
+const { v4: uuidv4 } = require('uuid');
 
 const ACCEPTED_FILE_TYPES = ['image/png', 'image/jpeg', 'image/jpg'];
 
 const storage = multerS3({
-  s3: s3Client.getS3Client(),
-  bucket: s3Client.getBucketName(),
-  key: (req, file, callback) => {
-    const user = req?.user ?? null;
-    const key = `${user ? user.id+'/' : ''}${file.originalname}`;
-    callback(null, key);
-  },
+    s3: s3Client.getS3Client(),
+    bucket: s3Client.getBucketName(),
+    contentType: multerS3.AUTO_CONTENT_TYPE,
+    key: (req, file, callback) => {
+        const user = req?.payload ?? null;
+        const uniqueSuffix = `${Date.now()}-${uuidv4()}`;
+        const fileExtension = file.originalname.split('.').pop();
+        const key = `${user ? user.aud + '/' : ''}${file.originalname.split('.')[0]}-${uniqueSuffix}.${fileExtension}`;
+        callback(null, key);
+    },
 });
 
 const imageUploadHandler = multer({
-  storage: storage,
-  fileFilter: (req, file, callback) => {
-    if (ACCEPTED_FILE_TYPES.includes(file.mimetype)) {
-      callback(null, true);
-    } else {
-      const acceptTypes = ACCEPTED_FILE_TYPES.join(', ');
-      callback(
-        httpError.NotAcceptable(`Invalid file type, only ${acceptTypes} is allowed!`),
-        false
-      );
-    }
-  },
+    storage: storage,
+    fileFilter: (req, file, callback) => {
+        if (ACCEPTED_FILE_TYPES.includes(file.mimetype)) {
+            callback(null, true);
+        } else {
+            const acceptTypes = ACCEPTED_FILE_TYPES.join(', ');
+            callback(
+                httpError.NotAcceptable(
+                    `Invalid file type, only ${acceptTypes} is allowed!`
+                ),
+                false
+            );
+        }
+    },
 });
 
 module.exports = imageUploadHandler;
