@@ -123,14 +123,18 @@ module.exports = {
                 throw createError(404, 'Album not found');
             }
 
-            const totalElements = await Photo.countDocuments({
-                album: albumId,
-                $or: [
-                    { title: { $regex: search, $options: 'i' } },
-                    { tags: { $in: [search] } },
-                    { title: { $exists: false } },
-                ],
-            });
+            const searchQuery =
+                search === ''
+                    ? { album: albumId }
+                    : {
+                          album: albumId,
+                          $or: [
+                              { title: { $regex: search, $options: 'i' } },
+                              { tags: { $in: [search] } },
+                          ],
+                      };
+
+            const totalElements = await Photo.countDocuments(searchQuery);
 
             if (totalElements === 0) {
                 return res.status(200).json({
@@ -151,24 +155,14 @@ module.exports = {
             const hasNext = page < totalPages;
             const hasPrev = page > 1;
 
-            const photos = await Photo.find(
-                {
-                    album: { $in: [albumId] },
-                    $or: [
-                        { title: { $exists: false } },
-                        { title: { $regex: search, $options: 'i' } },
-                        { tags: { $in: [search] } },
-                    ],
-                },
-                {
-                    _id: 1,
-                    title: 1,
-                    url: 1,
-                    owner: 1,
-                    createdAt: 1,
-                    // tags: { $slice: 3 },
-                }
-            )
+            photos = await Photo.find(searchQuery, {
+                _id: 1,
+                title: 1,
+                url: 1,
+                owner: 1,
+                createdAt: 1,
+                // tags: { $slice: 3 },
+            })
                 .sort({ createdAt: sort === 'asc' ? 1 : -1 })
                 .skip((page - 1) * pageSize)
                 .limit(pageSize)
