@@ -458,16 +458,10 @@ module.exports = {
             const { groupId } = req.params;
             const inviteToken = req.query.inviteToken;
 
-            const group = await Group.findOne(
-                {
-                    _id: groupId,
-                    members: { $nin: [user.aud] },
-                },
-                {
-                    _id: 1,
-                    members: 1,
-                }
-            );
+            const group = await Group.findOne({
+                _id: groupId,
+                members: { $nin: [user.aud] },
+            });
 
             if (!group) {
                 throw createError(404, 'Group not found or you already joined');
