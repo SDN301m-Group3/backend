@@ -26,16 +26,26 @@ const NotificationSchema = new Schema(
             required: true,
             maxLength: [200, 'Content must be at most 200 characters'],
         },
-        seen: {
-            type: Boolean,
-            default: false,
-        },
+        seen: [
+            {
+                type: Schema.Types.ObjectId,
+                ref: 'user',
+            },
+        ],
         redirectUrl: {
             type: String,
         },
     },
     { timestamps: true }
 );
+
+NotificationSchema.methods.markAsSeen = function (userId) {
+    if (this.seen.includes(userId)) {
+        return this;
+    }
+    this.seen.push(userId);
+    return this.save();
+};
 
 const Notification = mongoose.model('notification', NotificationSchema);
 module.exports = Notification;
