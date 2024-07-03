@@ -2,8 +2,11 @@ const Album = require('../models/album.model');
 const createError = require('http-errors');
 const mongoose = require('mongoose');
 const Photo = require('../models/photo.model');
+const Notification = require('../models/notification.model');
+const User = require('../models/user.model');
 const axios = require('axios');
 const { pagination } = require('../middlewares/pagination');
+const MailerService = require('../services/mailer.service');
 
 axios.defaults.baseURL = 'https://api.unsplash.com/';
 
@@ -120,6 +123,7 @@ module.exports = {
             const totalElements = await Photo.countDocuments({
                 album: { $in: [albumId] },
                 $or: [
+                    { title: { $exists: false } },
                     { title: { $regex: search, $options: 'i' } },
                     { tags: { $in: [search] } },
                 ],
@@ -148,6 +152,7 @@ module.exports = {
                 {
                     album: { $in: [albumId] },
                     $or: [
+                        { title: { $exists: false } },
                         { title: { $regex: search, $options: 'i' } },
                         { tags: { $in: [search] } },
                     ],
@@ -232,6 +237,80 @@ module.exports = {
 
             res.status(201).send({
                 message: `${number} Photos created successfully`,
+            });
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    uploadPhotoToAlbum: async (req, res, next) => {
+        try {
+            const { albumId } = req.params;
+            const user = req.payload;
+            const savedPhoto = req.file;
+
+            if (!savedPhoto) {
+                return res.status(400).send('No file uploaded.');
+            }
+
+            const album = await Album.findOne({
+                _id: albumId,
+                members: { $in: [user.aud] },
+                status: 'ACTIVE',
+            });
+
+            if (!album) {
+                throw createError(404, 'Album not found');
+            }
+
+            const photo = await Photo.create({
+                url: savedPhoto.location,
+                owner: user.aud,
+                album: albumId,
+            });
+
+            await album.addPhoto(photo._id);
+
+            const newNoti = await Notification.create({
+                user: user.aud,
+                type: 'ALBUM',
+                receivers: album._id,
+                content: `${user.username} added a new photo to album ${album.title}`,
+                redirectUrl: `/photo/${photo._id}`,
+            });
+
+            album.members.forEach(async (member) => {
+                if (member.toString() !== user.aud) {
+                    const memberNoti = await User.findById({
+                        _id: member,
+                    });
+                    await memberNoti.addNotification(newNoti._id);
+
+                    await MailerService.sendUserUploadPhotoEmail(
+                        memberNoti,
+                        user,
+                        photo,
+                        album
+                    );
+                }
+            });
+
+            res.status(200).json({
+                _id: newNoti._id,
+                user: {
+                    _id: user.aud,
+                    username: user.username,
+                    fullName: user.fullName,
+                    email: user.email,
+                    img: user.img,
+                },
+                type: newNoti.type,
+                content: newNoti.content,
+                redirectUrl: newNoti.redirectUrl,
+                createdAt: newNoti.createdAt,
+                receivers: album.members,
+                seen: newNoti.seen,
+                albumId: album._id,
             });
         } catch (error) {
             next(error);

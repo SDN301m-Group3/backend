@@ -6,6 +6,7 @@ const inviteToGroup = require('../templates/inviteToGroup.template');
 const welcomeTemplate = require('../templates/welcome.template');
 const ownerRemovedGroup = require('../templates/ownerRemovedGroup.template');
 const removeUserFromGroup = require('../templates/removeUserFromGroup.template');
+const userUploadNewPhoto = require('../templates/userUploadNewPhoto.template');
 const client = require('../configs/redis.config');
 const { NodemailerConfig } = require('../configs');
 const likePhoto = require('../templates/likePhoto.template');
@@ -81,6 +82,29 @@ class MailerService {
             to: user.email,
             subject: `Important Notice: Group Deleted`,
             text: `Dear ${user.username}, We regret to inform you that the group, ${group.title}, has been deleted by the owner. We understand that this may come as unexpected news. If you have any questions or need further assistance, please do not hesitate to contact our support team. Thank you for your understanding.`,
+            html: htmlToSend,
+        };
+
+        await NodemailerConfig.transporter.sendMail(mailOptions);
+
+        return mailOptions;
+    }
+    async sendUserUploadPhotoEmail(user, uploadUser, photo, album) {
+        const template = handlebars.compile(userUploadNewPhoto);
+        const htmlToSend = template({
+            username: user.username,
+            uploadUsername: uploadUser.username,
+            photoUrl: photo.url,
+            albumTitle: album.title,
+            redirectUrl: `${process.env.FRONTEND_URL}/photo/${photo._id}`,
+            siteConfigName: process.env.FRONTEND_SITE_NAME,
+        });
+
+        const mailOptions = {
+            from: process.env.EMAIL_NAME,
+            to: user.email,
+            subject: `Photo Uploaded`,
+            text: `Dear ${user.username}, We are excited to inform you that ${uploadUser.username} has uploaded a new photo to the album, ${album.title}. Click the link to view the new photo: ${process.env.FRONTEND_URL}/photo/${photo._id}`,
             html: htmlToSend,
         };
 

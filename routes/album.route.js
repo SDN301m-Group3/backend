@@ -2,6 +2,7 @@ const express = require('express');
 const albumRouter = express.Router();
 const { AlbumController } = require('../controllers');
 const { JwtConfig } = require('../configs');
+const imageUploadHandler = require('../middlewares/uploadImageHandler');
 
 // albumRouter.post(
 //     '/:groupId/create-album',
@@ -37,6 +38,12 @@ albumRouter.get(
     '/:albumId/add-random-photos',
     JwtConfig.verifyAccessToken,
     AlbumController.createRandomPhotos
+);
+
+albumRouter.post(
+    '/:albumId/upload-photo',
+    [JwtConfig.verifyAccessToken, imageUploadHandler.single('image')],
+    AlbumController.uploadPhotoToAlbum
 );
 
 module.exports = albumRouter;
