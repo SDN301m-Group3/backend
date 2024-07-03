@@ -2,7 +2,7 @@ const express = require('express');
 const albumRouter = express.Router();
 const { AlbumController } = require('../controllers');
 const { JwtConfig } = require('../configs');
-const imageUploadHandler = require('../middlewares/uploadImageHandler');
+const imageUploadHandler = require('../middlewares/uploadImage.handler');
 
 // albumRouter.post(
 //     '/:groupId/create-album',
