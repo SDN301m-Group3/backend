@@ -10,6 +10,7 @@ const userUploadNewPhoto = require('../templates/userUploadNewPhoto.template');
 const client = require('../configs/redis.config');
 const { NodemailerConfig } = require('../configs');
 const likePhoto = require('../templates/likePhoto.template');
+const inviteToAlbum = require('../templates/inviteToAlbum.template');
 
 const EXPIRED_TIME = 900;
 
@@ -155,6 +156,26 @@ class MailerService {
         await NodemailerConfig.transporter.sendMail(mailOptions);
 
         return mailOptions;
+    }
+    async sendInviteToAlbumEmail(user, album, inviteToken) {
+        const template = handlebars.compile(inviteToAlbum);
+        const htmlToSend = template({
+            username: user.username,
+            album: album.title,
+            albumImg: album.photos[0].url,
+            siteConfigName: process.env.FRONTEND_SITE_NAME,
+            joinLink: `${process.env.FRONTEND_URL}/album/${album._id}/invite?inviteToken=${inviteToken}`,
+        });
+
+        const mailOptions = {
+            from: process.env.EMAIL_NAME,
+            to: user.email,
+            subject: `You have been invited to join ${album.title}`,
+            text: `Welcome ${user.username} to ${album.title}. Link to join group: ${process.env.FRONTEND_URL}/album/${album._id}/invite?inviteToken=${inviteToken}`,
+            html: htmlToSend,
+        };
+
+        await NodemailerConfig.transporter.sendMail(mailOptions);
     }
 }
 
