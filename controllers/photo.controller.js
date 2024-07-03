@@ -32,16 +32,25 @@ module.exports = {
                 );
             }
 
-            const history = new History({
+            const history = await History.findOne({
                 user: user.aud,
                 photo: id,
                 actionType: 'VIEW',
             });
-            await history.save();
-            await User.findOneAndUpdate(
-                { _id: user.aud },
-                { $addToSet: { history: history._id } }
-            );
+
+            if (history) {
+                await history.updateOne({ updatedAt: new Date() });
+            } else {
+                const newHistory = await History.create({
+                    user: user.aud,
+                    photo: id,
+                    actionType: 'VIEW',
+                });
+                await User.updateOne(
+                    { _id: user.aud },
+                    { $addToSet: { histories: newHistory._id } }
+                );
+            }
 
             const photo = await Photo.findOne(
                 { _id: id, status: 'ACTIVE' },
@@ -290,6 +299,58 @@ module.exports = {
                 seen: newNoti.seen,
             });
         } catch (error) {
+            next(error);
+        }
+    },
+
+    recentViewPhotos: async (req, res, next) => {
+        try {
+            const user = req.payload;
+            const { limit = 10 } = req.query;
+
+            const parseLimit = parseInt(limit);
+
+            if (isNaN(parseLimit) || parseLimit < 1 || parseLimit > 30) {
+                throw createError.BadRequest('Invalid limit');
+            }
+
+            const photo = await History.find(
+                {
+                    user: user.aud,
+                    actionType: 'VIEW',
+                },
+                {
+                    _id: 1,
+                    photo: 1,
+                    actionType: 1,
+                    createdAt: 1,
+                    updatedAt: 1,
+                }
+            )
+                .populate({
+                    path: 'photo',
+                    select: '_id title url owner album',
+                    populate: [
+                        {
+                            path: 'owner',
+                            select: '_id username email fullName img',
+                        },
+                        {
+                            path: 'album',
+                            select: '_id title group',
+                            populate: {
+                                path: 'group',
+                                select: '_id title',
+                            },
+                        },
+                    ],
+                })
+                .sort({ updateAt: -1 })
+                .limit(parseLimit);
+
+            res.status(200).json(photo);
+        } catch (error) {
+            console.log(error);
             next(error);
         }
     },

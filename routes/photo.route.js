@@ -2,7 +2,12 @@ const express = require('express');
 const photoRouter = express.Router();
 const { PhotoController } = require('../controllers');
 const { JwtConfig } = require('../configs');
-const imageUploadHandler = require('../middlewares/uploadImageHandler');
+
+photoRouter.get(
+    '/recent-view',
+    JwtConfig.verifyAccessToken,
+    PhotoController.recentViewPhotos
+);
 
 photoRouter.get(
     '/:id',
