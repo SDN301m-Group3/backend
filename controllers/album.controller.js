@@ -125,10 +125,11 @@ module.exports = {
 
             const totalElements = await Photo.countDocuments({
                 album: albumId,
+
                 $or: [
-                    { title: { $exists: false } },
                     { title: { $regex: search, $options: 'i' } },
                     { tags: { $in: [search] } },
+                    { title: { $exists: false } },
                 ],
             });
 
@@ -246,6 +247,7 @@ module.exports = {
             next(error);
         }
     },
+
     inviteUserToAlbum: async (req, res, next) => {
         try {
             const user = req.payload;
