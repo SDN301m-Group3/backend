@@ -5,7 +5,7 @@ const httpError = require('http-errors');
 const { v4: uuidv4 } = require('uuid');
 
 const ACCEPTED_FILE_TYPES = ['image/png', 'image/jpeg', 'image/jpg'];
-const MAX_FILE_SIZE = +process.env.MAX_FILE_SIZE || 10 * 1024 * 1024;
+const MAX_PHOTO_SIZE = +process.env.MAX_PHOTO_SIZE || 10 * 1024 * 1024;
 
 const storage = multerS3({
     s3: s3Client.getS3Client(),
@@ -22,7 +22,7 @@ const storage = multerS3({
 
 const imageUploadHandler = multer({
     storage: storage,
-    limits: { fileSize: MAX_FILE_SIZE },
+    limits: { fileSize: MAX_PHOTO_SIZE },
     fileFilter: (req, file, callback) => {
         console.log(file.size, file.mimetype);
         if (ACCEPTED_FILE_TYPES.includes(file.mimetype)) {
