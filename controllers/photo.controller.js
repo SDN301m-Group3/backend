@@ -345,7 +345,7 @@ module.exports = {
                         },
                     ],
                 })
-                .sort({ updateAt: -1 })
+                .sort({ updatedAt: -1 })
                 .limit(parseLimit);
 
             res.status(200).json(photo);

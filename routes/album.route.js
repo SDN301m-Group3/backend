@@ -4,12 +4,6 @@ const { AlbumController } = require('../controllers');
 const { JwtConfig } = require('../configs');
 const imageUploadHandler = require('../middlewares/uploadImage.handler');
 
-// albumRouter.post(
-//     '/:groupId/create-album',
-//     JwtConfig.verifyAccessToken,
-//     AlbumController.createAlbum
-// );
-
 albumRouter.put(
     '/delete/:id',
     JwtConfig.verifyAccessToken,
@@ -46,4 +40,15 @@ albumRouter.post(
     AlbumController.uploadPhotoToAlbum
 );
 
+albumRouter.post(
+    '/:albumId/invite',
+    JwtConfig.verifyAccessToken,
+    AlbumController.inviteUserToAlbum
+);
+
+albumRouter.post(
+    '/:albumId/accept-invite',
+    JwtConfig.verifyAccessToken,
+    AlbumController.acceptInvitationToAlbum
+);
 module.exports = albumRouter;
