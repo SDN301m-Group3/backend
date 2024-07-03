@@ -19,7 +19,7 @@ const PhotoSchema = new Schema(
         },
         title: {
             type: String,
-            required: true,
+            required: false,
             trim: true,
             maxLength: [50, 'Title must be at most 50 characters'],
         },
