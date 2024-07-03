@@ -293,4 +293,56 @@ module.exports = {
             next(error);
         }
     },
+
+    createReact: async (req, res, next) => {
+        try {
+            const { id } = req.params;
+            const user = req.payload;
+            const album = await Album.findOne(
+                {
+                    photos: { $in: [id] },
+                    status: 'ACTIVE',
+                    members: { $in: [user.aud] },
+                },
+                { _id: 1 }
+            );
+
+            if (!album) {
+                throw createError.Unauthorized(
+                    'You are not allowed to comment on this photo'
+                );
+            }
+            const newReact = new React ({
+                user: user.aud,
+                photo: id
+            })
+
+            await newReact.save()
+
+            await Photo.updateOne(
+                { id: _id },
+                { $push: { react: newReact._id } }
+            )
+
+            await User.updateOne(
+                { id: _id },
+                { $push: { reacts: newReact._id } }
+            )
+            
+            const photo = await Photo.findOne(
+                { _id: id },
+                { owner: 1, title: 1, url: 1 }
+            ).populate('owner', '_id username email');
+
+            if (user.aud === photo.owner._id.toString()) {
+                res.status(200).json(newReact);
+                return;
+            }
+
+            // Add the code for the notification section here
+
+        } catch (error) {
+            next(error)
+        }
+    },
 };
