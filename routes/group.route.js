@@ -76,4 +76,11 @@ groupRouter.put(
     GroupController.removeUserFromGroup
 );
 
+//modify group
+groupRouter.put(
+    '/:groupId/modify',
+    JwtConfig.verifyAccessToken,
+    GroupController.modifyGroup
+);
+
 module.exports = groupRouter;

@@ -584,4 +584,34 @@ module.exports = {
             next(error);
         }
     },
+    modifyGroup: async (req, res, next) => {
+        try {
+            const user = req.payload;
+            const { groupId } = req.params;
+            const { title, description, status } = req.body;
+
+            const group = await Group.findById(groupId);
+            if (!group) {
+                throw createError(404, 'Group not found');
+            }
+
+            if (group.owner.toString() !== user.aud) {
+                throw createError(403, 'You do not have permission to modify this group');
+            }
+
+            group.title = title || group.title;
+            group.description = description || group.description;
+            group.status = status || group.status;
+
+            const updatedGroup = await group.save();
+
+            res.status(200).json(updatedGroup);
+        } catch (error) {
+            if (error.errors) {
+                const errors = Object.values(error.errors).map(err => err.message);
+                error = createError(422, { message: errors.join(', ') });
+            }
+            next(error);
+        }
+    },
 };
