@@ -157,6 +157,7 @@ class MailerService {
 
         return mailOptions;
     }
+
     async sendInviteToAlbumEmail(user, album, inviteToken) {
         const template = handlebars.compile(inviteToAlbum);
         const htmlToSend = template({
