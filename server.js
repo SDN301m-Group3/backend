@@ -1,21 +1,8 @@
 const express = require('express');
 const morgan = require('morgan');
 const cors = require('cors');
-const createError = require('http-errors');
 const db = require('./models');
 require('dotenv').config();
-
-const {
-    AuthRouter,
-    GroupRouter,
-    AlbumRouter,
-    UserRouter,
-    NotificationRouter,
-    PhotoRouter,
-    CommentRouter,
-} = require('./routes');
-
-const { JwtConfig } = require('./configs');
 
 const app = express();
 app.use(morgan('dev'));
@@ -27,30 +14,9 @@ app.use(cors({
   optionSuccessStatus: 200,
 }));
 
-app.get('/', JwtConfig.verifyAccessToken, async (req, res, next) => {
-    res.send('Hello from express');
-});
+app.use(require('./routes'));
 
-app.use('/auth', AuthRouter);
-app.use('/groups', GroupRouter);
-app.use('/albums', AlbumRouter);
-app.use('/users', UserRouter);
-app.use('/notifications', NotificationRouter);
-app.use('/photos', PhotoRouter);
-
-app.use(async (req, res, next) => {
-    next(createError.NotFound());
-});
-
-app.use((err, req, res, next) => {
-  res.status(err.status || 400);
-  res.send({
-    error: {
-      status: err.status || 400,
-      message: err.message,
-    },
-  });
-});
+app.use(require('./middlewares/error.handler'))
 
 const PORT = process.env.PORT || 9999;
 const HOST_NAME = process.env.HOST_NAME || 'localhost';
