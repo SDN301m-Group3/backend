@@ -375,6 +375,12 @@ module.exports = {
             });
     
             await newReact.save();
+
+            await Photo.updateOne(
+                { _id: id },
+                { $push: { react : newReact._id } }
+            );
+
             await User.updateOne(
                 { _id: user.aud },
                 { $push: { reacts: newReact._id } }
