@@ -76,6 +76,16 @@ module.exports = {
                 throw createError(404, 'Photo not found');
             }
 
+            const isReacted = (await React.findOne({
+                photo: id,
+                user: user.aud,
+            }))
+                ? true
+                : false;
+
+            const totalReact = await React.countDocuments({ photo: id });
+            const totalComment = await Comment.countDocuments({ photo: id });
+
             res.status(200).json({
                 _id: photo._id,
                 title: photo.title,
@@ -91,6 +101,9 @@ module.exports = {
                     _id: photo.album.group._id,
                     title: photo.album.group.title,
                 },
+                isReacted,
+                totalReact,
+                totalComment,
             });
         } catch (error) {
             next(error);
@@ -362,17 +375,11 @@ module.exports = {
             });
     
             await newReact.save();
-    
-            await Photo.updateOne(
-                { _id: id },
-                { $push: { react: newReact._id } }
-            );
-    
             await User.updateOne(
                 { _id: user.aud },
                 { $push: { reacts: newReact._id } }
             );
-    
+
             const photo = await Photo.findOne(
                 { _id: id },
                 { owner: 1, title: 1, url: 1 }
@@ -417,7 +424,7 @@ module.exports = {
         } catch (error) {
             next(error);
         }
-    },     
+    },
     recentViewPhotos: async (req, res, next) => {
         try {
             const user = req.payload;
