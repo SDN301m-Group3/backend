@@ -159,12 +159,12 @@ class MailerService {
         return mailOptions;
     }
 
-    async sendUserReactPhotoEmail(user, photo, react) {
+    async sendUserReactPhotoEmail(user, photo, noti) {
         const template = handlebars.compile(reactPhoto);
         const htmlToSend = template({
             ownerUsername: photo?.owner?.username,
             photoUrl: photo?.url,
-            content: comment?.content,
+            content: noti?.content,
             redirectUrl: `${process.env.FRONTEND_URL}/photo/${photo?._id}`,
             siteConfigName: process.env.FRONTEND_SITE_NAME,
         });
