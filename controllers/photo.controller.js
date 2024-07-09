@@ -315,54 +315,75 @@ module.exports = {
                 },
                 { _id: 1 }
             );
-
+    
             if (!album) {
                 throw createError.Unauthorized(
-                    'You are not allowed to comment on this photo'
+                    'You are not allowed to react on this photo'
                 );
             }
-            const newReact = new React ({
+    
+            const existingReact = await React.findOne({
                 user: user.aud,
                 photo: id
-            })
-
-            await newReact.save()
-
+            });
+    
+            if (existingReact) {
+                await React.deleteOne({ _id: existingReact._id });
+                await Photo.updateOne(
+                    { _id: id },
+                    { $pull: { react: existingReact._id } }
+                );
+                await User.updateOne(
+                    { _id: user.aud },
+                    { $pull: { reacts: existingReact._id } }
+                );
+    
+                res.status(200).json({ message: 'React removed' });
+                return;
+            }
+    
+            const newReact = new React({
+                user: user.aud,
+                photo: id
+            });
+    
+            await newReact.save();
+    
             await Photo.updateOne(
-                { id: _id },
+                { _id: id },
                 { $push: { react: newReact._id } }
-            )
-
+            );
+    
             await User.updateOne(
-                { id: _id },
+                { _id: user.aud },
                 { $push: { reacts: newReact._id } }
-            )
-            
+            );
+    
             const photo = await Photo.findOne(
                 { _id: id },
                 { owner: 1, title: 1, url: 1 }
             ).populate('owner', '_id username email');
-
+    
             if (user.aud === photo.owner._id.toString()) {
                 res.status(200).json(newReact);
                 return;
             }
-
+    
             const newNoti = await Notification.create({
                 user: user.aud,
                 type: 'USER',
                 receivers: photo.owner._id,
-                content: `${user.username} has reacted to your photo` ,
+                content: `${user.username} has reacted to your photo`,
                 redirectUrl: `/photo/${id}`,
             });
-
+    
             await User.updateOne(
                 { _id: photo.owner._id },
                 { $push: { notifications: newNoti._id } }
             );
-
+    
             await MailerService.sendUserLikePhotoEmail(user, photo, newReact);
-
+    
             res.status(200).json({
                 _id: newNoti._id,
                 user: {
@@ -380,8 +401,9 @@ module.exports = {
                 seen: newNoti.seen,
             });
         } catch (error) {
-            next(error)
-        }},  
+            next(error);
+        }
+    },     
     recentViewPhotos: async (req, res, next) => {
         try {
             const user = req.payload;
