@@ -11,6 +11,7 @@ const client = require('../configs/redis.config');
 const { NodemailerConfig } = require('../configs');
 const likePhoto = require('../templates/likePhoto.template');
 const inviteToAlbum = require('../templates/inviteToAlbum.template');
+const reactPhoto = require('../templates/reactPhoto.template')
 
 const EXPIRED_TIME = 900;
 
@@ -150,6 +151,29 @@ class MailerService {
             to: photo.owner.email,
             subject: `${user.username} commented on your photo`,
             text: `${user.username} commented on your photo. Click the link to view the comment: ${process.env.FRONTEND_URL}/photo/${photo.id}`,
+            html: htmlToSend,
+        };
+
+        await NodemailerConfig.transporter.sendMail(mailOptions);
+
+        return mailOptions;
+    }
+
+    async sendUserReactPhotoEmail(user, photo, noti) {
+        const template = handlebars.compile(reactPhoto);
+        const htmlToSend = template({
+            ownerUsername: photo?.owner?.username,
+            photoUrl: photo?.url,
+            content: noti?.content,
+            redirectUrl: `${process.env.FRONTEND_URL}/photo/${photo?._id}`,
+            siteConfigName: process.env.FRONTEND_SITE_NAME,
+        });
+
+        const mailOptions = {
+            from: process.env.EMAIL_NAME,
+            to: photo.owner.email,
+            subject: `${user.username} react on your photo`,
+            text: `${user.username} react on your photo. Click the link to view the reaction: ${process.env.FRONTEND_URL}/photo/${photo.id}`,
             html: htmlToSend,
         };
 

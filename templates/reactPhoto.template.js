@@ -58,7 +58,7 @@ const reactPhoto = `
             <p>{{content}}</p>
             <p>You can view the reaction and respond by clicking the button below:</p>
             <div style="text-align: center; margin: 30px 0;">
-                <a href="{{redirectUrl}}" style="background-color: #007bff; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-size: 16px;">View Comment</a>
+                <a href="{{redirectUrl}}" style="background-color: #007bff; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-size: 16px;">View Reaction</a>
             </div>
         </div>
         <div class="footer">
