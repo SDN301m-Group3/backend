@@ -369,12 +369,10 @@ module.exports = {
                 return;
             }
     
-            const newReact = new React({
+            const newReact = await React.create({
                 user: user.aud,
                 photo: id
             });
-    
-            await newReact.save();
 
             await Photo.updateOne(
                 { _id: id },
