@@ -76,6 +76,16 @@ module.exports = {
                 throw createError(404, 'Photo not found');
             }
 
+            const isReacted = (await React.findOne({
+                photo: id,
+                user: user.aud,
+            }))
+                ? true
+                : false;
+
+            const totalReact = await React.countDocuments({ photo: id });
+            const totalComment = await Comment.countDocuments({ photo: id });
+
             res.status(200).json({
                 _id: photo._id,
                 title: photo.title,
@@ -91,6 +101,9 @@ module.exports = {
                     _id: photo.album.group._id,
                     title: photo.album.group.title,
                 },
+                isReacted,
+                totalReact,
+                totalComment,
             });
         } catch (error) {
             next(error);
@@ -303,6 +316,86 @@ module.exports = {
         }
     },
 
+    createReact: async (req, res, next) => {
+        try {
+            const { id } = req.params;
+            const user = req.payload;
+            const album = await Album.findOne(
+                {
+                    photos: { $in: [id] },
+                    status: 'ACTIVE',
+                    members: { $in: [user.aud] },
+                },
+                { _id: 1 }
+            );
+
+            if (!album) {
+                throw createError.Unauthorized(
+                    'You are not allowed to comment on this photo'
+                );
+            }
+            const newReact = new React({
+                user: user.aud,
+                photo: id,
+            });
+
+            await newReact.save();
+
+            await Photo.updateOne(
+                { id: _id },
+                { $push: { react: newReact._id } }
+            );
+
+            await User.updateOne(
+                { id: _id },
+                { $push: { reacts: newReact._id } }
+            );
+
+            const photo = await Photo.findOne(
+                { _id: id },
+                { owner: 1, title: 1, url: 1 }
+            ).populate('owner', '_id username email');
+
+            if (user.aud === photo.owner._id.toString()) {
+                res.status(200).json(newReact);
+                return;
+            }
+
+            const newNoti = await Notification.create({
+                user: user.aud,
+                type: 'USER',
+                receivers: photo.owner._id,
+                content: `${user.username} has reacted to your photo`,
+                redirectUrl: `/photo/${id}`,
+            });
+
+            await User.updateOne(
+                { _id: photo.owner._id },
+                { $push: { notifications: newNoti._id } }
+            );
+
+            await MailerService.sendUserLikePhotoEmail(user, photo, newReact);
+
+            res.status(200).json({
+                _id: newNoti._id,
+                user: {
+                    _id: user.aud,
+                    username: user.username,
+                    fullName: user.fullName,
+                    email: user.email,
+                    img: user.img,
+                },
+                type: newNoti.type,
+                content: newNoti.content,
+                redirectUrl: newNoti.redirectUrl,
+                createdAt: newNoti.createdAt,
+                receivers: photo.owner._id,
+                seen: newNoti.seen,
+            });
+        } catch (error) {
+            next(error);
+        }
+    },
     recentViewPhotos: async (req, res, next) => {
         try {
             const user = req.payload;

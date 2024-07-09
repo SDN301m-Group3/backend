@@ -26,4 +26,10 @@ photoRouter.post(
     PhotoController.createComment
 );
 
+photoRouter.post(
+    '/:id/react',
+    JwtConfig.verifyAccessToken,
+    PhotoController.createReact
+);
+
 module.exports = photoRouter;
