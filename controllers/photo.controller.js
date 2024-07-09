@@ -76,6 +76,16 @@ module.exports = {
                 throw createError(404, 'Photo not found');
             }
 
+            const isReacted = (await React.findOne({
+                photo: id,
+                user: user.aud,
+            }))
+                ? true
+                : false;
+
+            const totalReact = await React.countDocuments({ photo: id });
+            const totalComment = await Comment.countDocuments({ photo: id });
+
             res.status(200).json({
                 _id: photo._id,
                 title: photo.title,
@@ -91,6 +101,9 @@ module.exports = {
                     _id: photo.album.group._id,
                     title: photo.album.group.title,
                 },
+                isReacted,
+                totalReact,
+                totalComment,
             });
         } catch (error) {
             next(error);
@@ -321,23 +334,23 @@ module.exports = {
                     'You are not allowed to comment on this photo'
                 );
             }
-            const newReact = new React ({
+            const newReact = new React({
                 user: user.aud,
-                photo: id
-            })
+                photo: id,
+            });
 
-            await newReact.save()
+            await newReact.save();
 
             await Photo.updateOne(
                 { id: _id },
                 { $push: { react: newReact._id } }
-            )
+            );
 
             await User.updateOne(
                 { id: _id },
                 { $push: { reacts: newReact._id } }
-            )
-            
+            );
+
             const photo = await Photo.findOne(
                 { _id: id },
                 { owner: 1, title: 1, url: 1 }
@@ -352,7 +365,7 @@ module.exports = {
                 user: user.aud,
                 type: 'USER',
                 receivers: photo.owner._id,
-                content: `${user.username} has reacted to your photo` ,
+                content: `${user.username} has reacted to your photo`,
                 redirectUrl: `/photo/${id}`,
             });
 
@@ -380,8 +393,9 @@ module.exports = {
                 seen: newNoti.seen,
             });
         } catch (error) {
-            next(error)
-        }},  
+            next(error);
+        }
+    },
     recentViewPhotos: async (req, res, next) => {
         try {
             const user = req.payload;
