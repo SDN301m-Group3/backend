@@ -365,7 +365,7 @@ module.exports = {
                 type: 'USER',
                 receivers: invitedUser._id,
                 content: `You have been invited to join the album ${album.title}`,
-                redirectUrl: `/albums/${album._id}/invite?inviteToken=${inviteToken}`,
+                redirectUrl: `/album/${album._id}/invite?inviteToken=${inviteToken}`,
             });
 
             await invitedUser.addNotification(newNoti._id);
