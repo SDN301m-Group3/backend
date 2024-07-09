@@ -328,6 +328,20 @@ module.exports = {
             });
     
             if (existingReact) {
+                const existingNoti = await Notification.findOne({
+                    user: user.aud,
+                    type: 'USER',
+                    redirectUrl: `/photo/${id}`,
+                });
+
+                if (existingNoti) {
+                    await Notification.deleteOne({ _id: existingNoti._id });
+                    await User.updateOne(
+                        { _id: existingNoti.receivers },
+                        { $pull: { notifications: existingNoti._id } }
+                    );
+                }
+
                 await React.deleteOne({ _id: existingReact._id });
                 await Photo.updateOne(
                     { _id: id },
@@ -338,7 +352,7 @@ module.exports = {
                     { $pull: { reacts: existingReact._id } }
                 );
     
-                res.status(200).json({ message: 'React removed' });
+                res.status(200).json({ message: 'React and notification removed' });
                 return;
             }
     
