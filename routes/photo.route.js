@@ -4,6 +4,12 @@ const { PhotoController } = require('../controllers');
 const { JwtConfig } = require('../configs');
 
 photoRouter.get(
+    '/recent-view',
+    JwtConfig.verifyAccessToken,
+    PhotoController.recentViewPhotos
+);
+
+photoRouter.get(
     '/:id',
     JwtConfig.verifyAccessToken,
     PhotoController.getPhotoById

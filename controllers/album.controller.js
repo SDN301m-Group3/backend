@@ -2,8 +2,14 @@ const Album = require('../models/album.model');
 const createError = require('http-errors');
 const mongoose = require('mongoose');
 const Photo = require('../models/photo.model');
+const Notification = require('../models/notification.model');
+const User = require('../models/user.model');
 const axios = require('axios');
 const { pagination } = require('../middlewares/pagination');
+const MailerService = require('../services/mailer.service');
+const client = require('../configs/redis.config');
+const { randomUUID } = require('crypto');
+const Group = require('../models/group.model');
 
 axios.defaults.baseURL = 'https://api.unsplash.com/';
 
@@ -117,13 +123,18 @@ module.exports = {
                 throw createError(404, 'Album not found');
             }
 
-            const totalElements = await Photo.countDocuments({
-                album: { $in: [albumId] },
-                $or: [
-                    { title: { $regex: search, $options: 'i' } },
-                    { tags: { $in: [search] } },
-                ],
-            });
+            const searchQuery =
+                search === ''
+                    ? { album: albumId }
+                    : {
+                          album: albumId,
+                          $or: [
+                              { title: { $regex: search, $options: 'i' } },
+                              { tags: { $in: [search] } },
+                          ],
+                      };
+
+            const totalElements = await Photo.countDocuments(searchQuery);
 
             if (totalElements === 0) {
                 return res.status(200).json({
@@ -144,23 +155,14 @@ module.exports = {
             const hasNext = page < totalPages;
             const hasPrev = page > 1;
 
-            const photos = await Photo.find(
-                {
-                    album: { $in: [albumId] },
-                    $or: [
-                        { title: { $regex: search, $options: 'i' } },
-                        { tags: { $in: [search] } },
-                    ],
-                },
-                {
-                    _id: 1,
-                    title: 1,
-                    url: 1,
-                    owner: 1,
-                    createdAt: 1,
-                    // tags: { $slice: 3 },
-                }
-            )
+            photos = await Photo.find(searchQuery, {
+                _id: 1,
+                title: 1,
+                url: 1,
+                owner: 1,
+                createdAt: 1,
+                // tags: { $slice: 3 },
+            })
                 .sort({ createdAt: sort === 'asc' ? 1 : -1 })
                 .skip((page - 1) * pageSize)
                 .limit(pageSize)
@@ -233,6 +235,240 @@ module.exports = {
             res.status(201).send({
                 message: `${number} Photos created successfully`,
             });
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    uploadPhotoToAlbum: async (req, res, next) => {
+        try {
+            const { albumId } = req.params;
+            const user = req.payload;
+            const savedPhoto = req.file;
+
+            if (!savedPhoto) {
+                return res.status(400).send('No file uploaded.');
+            }
+
+            const album = await Album.findOne({
+                _id: albumId,
+                members: { $in: [user.aud] },
+                status: 'ACTIVE',
+            });
+
+            if (!album) {
+                throw createError(404, 'Album not found');
+            }
+
+            const photo = await Photo.create({
+                url: savedPhoto.location,
+                owner: user.aud,
+                album: albumId,
+            });
+
+            await album.addPhoto(photo._id);
+
+            const newNoti = await Notification.create({
+                user: user.aud,
+                type: 'ALBUM',
+                receivers: album._id,
+                content: `${user.username} added a new photo to album ${album.title}`,
+                redirectUrl: `/photo/${photo._id}`,
+            });
+
+            album.members.forEach(async (member) => {
+                if (member.toString() !== user.aud) {
+                    const memberNoti = await User.findById({
+                        _id: member,
+                    });
+                    await memberNoti.addNotification(newNoti._id);
+
+                    await MailerService.sendUserUploadPhotoEmail(
+                        memberNoti,
+                        user,
+                        photo,
+                        album
+                    );
+                }
+            });
+
+            res.status(200).json({
+                _id: newNoti._id,
+                user: {
+                    _id: user.aud,
+                    username: user.username,
+                    fullName: user.fullName,
+                    email: user.email,
+                    img: user.img,
+                },
+                type: newNoti.type,
+                content: newNoti.content,
+                redirectUrl: newNoti.redirectUrl,
+                createdAt: newNoti.createdAt,
+                receivers: album.members,
+                seen: newNoti.seen,
+                albumId: album._id,
+            });
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    inviteUserToAlbum: async (req, res, next) => {
+        try {
+            const user = req.payload;
+            const { albumId } = req.params;
+            const { email } = req.body;
+
+            const album = await Album.findById({
+                _id: albumId,
+                members: { $in: [user.aud] },
+                status: 'ACTIVE',
+            });
+
+            if (!album) {
+                throw createError(404, 'Album not found');
+            }
+
+            const invitedUser = await User.findOne({
+                email,
+                status: 'ACTIVE',
+            });
+            if (!invitedUser) {
+                throw createError(404, 'User not found');
+            }
+            if (album.members.includes(invitedUser._id)) {
+                throw createError(400, 'User already in album');
+            }
+
+            const inviteToken = `${randomUUID()}${randomUUID()}`.replace(
+                /-/g,
+                ''
+            );
+
+            // 3 days
+            const INVITE_EXPIRED_TIME = 259200;
+
+            await client.set(
+                `inviteToken-${inviteToken}`,
+                JSON.stringify({
+                    userId: user.aud,
+                    albumId: album._id,
+                    invitedUserId: invitedUser._id,
+                }),
+                'EX',
+                INVITE_EXPIRED_TIME
+            );
+
+            const newNoti = await Notification.create({
+                user: user.aud,
+                type: 'USER',
+                receivers: invitedUser._id,
+                content: `You have been invited to join the album ${album.title}`,
+                redirectUrl: `/albums/${album._id}/invite?inviteToken=${inviteToken}`,
+            });
+
+            await invitedUser.addNotification(newNoti._id);
+
+            await MailerService.sendInviteToAlbumEmail(
+                invitedUser,
+                album,
+                inviteToken
+            );
+
+            res.status(200).json({
+                _id: newNoti._id,
+                user: {
+                    _id: user.aud,
+                    username: user.username,
+                    fullName: user.fullName,
+                    email: user.email,
+                    img: user.img,
+                },
+                type: newNoti.type,
+                content: newNoti.content,
+                redirectUrl: newNoti.redirectUrl,
+                createdAt: newNoti.createdAt,
+                receivers: invitedUser._id,
+                seen: newNoti.seen,
+            });
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    acceptInvitationToAlbum: async (req, res, next) => {
+        try {
+            const user = req.payload;
+            const { albumId } = req.params;
+            const inviteToken = req.query.inviteToken;
+
+            const album = await Album.findById(
+                {
+                    _id: albumId,
+                    status: 'ACTIVE',
+                    members: { $nin: [user.aud] },
+                },
+                {
+                    _id: 1,
+                    members: 1,
+                }
+            );
+
+            if (!album) {
+                throw createError(404, 'Album not found or you are already in');
+            }
+
+            const inviteTokenData = await client.get(
+                `inviteToken-${inviteToken}`
+            );
+            if (!inviteTokenData) {
+                throw createError(400, 'Invite token is invalid');
+            }
+
+            const {
+                userId: inviteTokenUserId,
+                albumId: inviteTokenAlbumId,
+                invitedUserId,
+            } = JSON.parse(inviteTokenData);
+
+            if (
+                !(await Album.findOne({
+                    _id: inviteTokenAlbumId,
+                    members: { $in: [inviteTokenUserId] },
+                    status: 'ACTIVE',
+                }))
+            ) {
+                throw createError(404, 'Album not found or you already in');
+            }
+            if (invitedUserId !== user.aud) {
+                throw createError(400, 'Invalid user invite');
+            }
+            if (albumId !== inviteTokenAlbumId) {
+                throw createError(400, 'Invalid album invite');
+            }
+
+            const invitedUser = await User.findById(
+                { _id: invitedUserId },
+                { groups: 1 }
+            );
+
+            await album.addMember(user.aud);
+            const group = await Group.findOne(
+                {
+                    albums: { $in: [inviteTokenAlbumId] },
+                    members: { $nin: [invitedUserId] },
+                },
+                { _id: 1, members: 1 }
+            );
+
+            if (group) {
+                await group.addMember(user.aud);
+                await invitedUser.addGroup(group._id);
+            }
+
+            await client.del(`inviteToken-${inviteToken}`);
+            res.status(200).json(album);
         } catch (error) {
             next(error);
         }
