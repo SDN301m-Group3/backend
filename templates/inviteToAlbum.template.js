@@ -1,10 +1,10 @@
-const reactPhoto = `
+const inviteToAlbum = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>New React Notification</title>
+    <title>Album Invitation</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -23,6 +23,7 @@ const reactPhoto = `
         }
         .header {
             text-align: center;
+            width: 100%;
             padding: 10px 0;
         }
         .header img {
@@ -39,6 +40,18 @@ const reactPhoto = `
             font-size: 16px;
             color: #555555;
         }
+        .btn-container {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .btn {
+            background-color: #007bff;
+            color: #ffffff;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 16px;
+        }
         .footer {
             text-align: center;
             padding: 10px 0;
@@ -50,24 +63,25 @@ const reactPhoto = `
 <body>
     <div class="container">
         <div class="header">
-            <img src="{{photoUrl}}" alt="Photo">
+            <img src="{{albumImg}}" alt="Album Image">
         </div>
         <div class="content">
-            <h1>New React on Your Photo</h1>
-            <p>Hello {{ownerUsername}},</p>
-            <p>{{content}}</p>
-            <p>You can view the reaction and respond by clicking the button below:</p>
-            <div style="text-align: center; margin: 30px 0;">
-                <a href="{{redirectUrl}}" style="background-color: #007bff; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-size: 16px;">View Comment</a>
-            </div>
+            <h1>You're Invited!</h1>
+            <p>Hello {{username}},</p>
+            <p>We are excited to invite you to join our group, {{album}}. By joining, you'll be able to connect with like-minded individuals, participate in exclusive events, and much more.</p>
+            <p>Click the button below to accept your invitation and become a part of our community.</p>
+        </div>
+        <div class="btn-container">
+            <a href="{{joinLink}}" class="btn">Join Now</a>
         </div>
         <div class="footer">
-            <p>If you have any questions, don't hesitate to contact us.</p>
+            <p>If you have any questions, don't contact us =))).</p>
             <p>Best regards,<br>The {{siteConfigName}} Team</p>
         </div>
     </div>
 </body>
 </html>
-`;
 
-module.exports = reactPhoto;
+  `;
+
+module.exports = inviteToAlbum;

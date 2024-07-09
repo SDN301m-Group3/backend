@@ -69,16 +69,34 @@ module.exports = {
             const user = req.payload;
             const { notificationId } = req.params;
 
-            const userGroups = await Group.find({ members: user.aud }).select(
-                '_id'
-            );
+            const userGroups = await Group.find({
+                members: { $in: [user.aud] },
+            }).select('_id');
             const groupIds = userGroups.map((group) => group._id);
+
+            const userAlbums = await Album.find({
+                members: { $in: [user.aud] },
+            }).select('_id');
+            const albumIds = userAlbums.map((album) => album._id);
 
             const notification = await Notification.findOne({
                 _id: notificationId,
                 $or: [
-                    { receivers: user.aud },
-                    { receivers: { $in: groupIds } },
+                    { $and: [{ receivers: user.aud }, { type: 'USER' }] },
+                    {
+                        $and: [
+                            { receivers: { $in: groupIds } },
+                            { type: 'GROUP' },
+                            { user: { $ne: user.aud } },
+                        ],
+                    },
+                    {
+                        $and: [
+                            { receivers: { $in: albumIds } },
+                            { type: 'ALBUM' },
+                            { user: { $ne: user.aud } },
+                        ],
+                    },
                 ],
             });
 
@@ -86,8 +104,11 @@ module.exports = {
                 throw createError.NotFound('Notification not found');
             }
 
-            notification.seen = true;
-            await notification.save();
+            await notification.markAsSeen(user.aud);
+
+            res.status(200).json({
+                message: 'Notification marked as seen',
+            });
         } catch (error) {
             next(error);
         }
