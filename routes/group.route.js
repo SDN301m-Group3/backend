@@ -2,6 +2,7 @@ const express = require('express');
 const groupRouter = express.Router();
 const { GroupController } = require('../controllers');
 const { JwtConfig } = require('../configs');
+const imageUploadHandler = require('../middlewares/uploadImage.handler');
 
 groupRouter.get(
     '/my-groups',
@@ -79,7 +80,7 @@ groupRouter.put(
 //modify group
 groupRouter.put(
     '/:groupId/modify',
-    JwtConfig.verifyAccessToken,
+    [JwtConfig.verifyAccessToken,imageUploadHandler.single('image')],
     GroupController.modifyGroup
 );
 

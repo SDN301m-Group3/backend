@@ -589,6 +589,7 @@ module.exports = {
             const user = req.payload;
             const { groupId } = req.params;
             const { title, description, status } = req.body;
+            const savedPhoto = req.file;
 
             const group = await Group.findById(groupId);
             if (!group) {
@@ -599,13 +600,57 @@ module.exports = {
                 throw createError(403, 'You do not have permission to modify this group');
             }
 
+            const oldGroupTitle = group.title;
             group.title = title || group.title;
             group.description = description || group.description;
             group.status = status || group.status;
 
+            if (savedPhoto) {
+                group.groupImg = savedPhoto.location;
+            }
+
             const updatedGroup = await group.save();
 
-            res.status(200).json(updatedGroup);
+            const newNoti = await Notification.create({
+                user: user.aud,
+                type: 'GROUP',
+                receivers: group.members,
+                content: `${user.username} updated the information of group ${oldGroupTitle}`,
+                redirectUrl: `/group/${group._id}`,
+            });
+            
+            group.members.forEach(async (member) => {
+                if (member.toString() !== user.aud) {
+                    const memberNoti = await User.findById({
+                        _id: member,
+                    });
+                    await memberNoti.addNotification(newNoti._id);
+            
+                    await MailerService.sendUserGroupUpdatedEmail(
+                        memberNoti,
+                        user,
+                        group
+                    );
+                }
+            });
+            
+            res.status(200).json({
+                _id: newNoti._id,
+                user: {
+                    _id: user.aud,
+                    username: user.username,
+                    fullName: user.fullName,
+                    email: user.email,
+                    img: user.img,
+                },
+                type: newNoti.type,
+                content: newNoti.content,
+                redirectUrl: newNoti.redirectUrl,
+                createdAt: newNoti.createdAt,
+                receivers: group.members,
+                seen: newNoti.seen,
+                groupId: group._id,
+            });
         } catch (error) {
             if (error.errors) {
                 const errors = Object.values(error.errors).map(err => err.message);
