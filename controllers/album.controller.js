@@ -264,6 +264,7 @@ module.exports = {
                 url: savedPhoto.location,
                 owner: user.aud,
                 album: albumId,
+                mimeType: savedPhoto.mimetype,
             });
 
             await album.addPhoto(photo._id);

@@ -59,6 +59,7 @@ module.exports = {
                     title: 1,
                     tags: 1,
                     url: 1,
+                    mimeType: 1,
                     createdAt: 1,
                 }
             )
@@ -91,6 +92,7 @@ module.exports = {
                 title: photo.title,
                 tags: photo.tags,
                 url: photo.url,
+                mimeType: photo.mimeType,
                 createdAt: photo.createdAt,
                 owner: photo.owner,
                 album: {
