@@ -96,7 +96,27 @@ module.exports = {
             next(error);
         }
     },
+    updateAlbumById: async (req, res, next) => {
+        const ALLOW_CHANGE_FIELDS = ['title'];
+        const user = req.payload;
+        const { albumId } = req.params;
+        const changes = req.body;
 
+        const album = await Album.findOne({_id: albumId}).belongTo(user.aud).isActive();
+        if (!album) throw createError(404, 'Album not found');
+
+        const isChangeAllowed = Object.keys(changes).every(key => ALLOW_CHANGE_FIELDS.includes(key));
+        if (!isChangeAllowed) throw createError(400, 'Invalid change fields');
+
+        const { acknowledged } = await album.updateOne(changes);
+        if (!acknowledged) throw createError(500, 'Internal server error');
+
+        res.status(200).json({
+            message: 'Album updated successfully',
+            albumId,
+            changes
+        });
+    },
     getPhotosByAlbumId: async (req, res, next) => {
         try {
             const user = req.payload;
