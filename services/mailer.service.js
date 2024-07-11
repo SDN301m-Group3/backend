@@ -11,6 +11,7 @@ const client = require('../configs/redis.config');
 const { NodemailerConfig } = require('../configs');
 const likePhoto = require('../templates/likePhoto.template');
 const inviteToAlbum = require('../templates/inviteToAlbum.template');
+const userGroupUpdateTemplate = require('../templates/userGroupUpdateTemplate');
 
 const EXPIRED_TIME = 900;
 
@@ -177,6 +178,29 @@ class MailerService {
         };
 
         await NodemailerConfig.transporter.sendMail(mailOptions);
+    }
+
+    async sendUserGroupUpdateMail(user, group) {
+        const template = handlebars.compile(userGroupUpdateTemplate);
+        const htmlToSend = template({
+            username: user.username,
+            groupTitle: group.title,
+            groupImg: group.groupImg,
+            redirectUrl: `${process.env.FRONTEND_URL}/group/${group?._id}`,
+            siteConfigName: process.env.FRONTEND_SITE_NAME
+        });
+    
+        const mailOptions = {
+            from: process.env.EMAIL_NAME,
+            to: user.email,
+            subject: `Group Information Update`,
+            text: `Dear ${user.username}, ${group.title} group has updated group owner`,
+            html: htmlToSend,
+        };
+    
+        await NodemailerConfig.transporter.sendMail(mailOptions);
+    
+        return mailOptions;
     }
 }
 
