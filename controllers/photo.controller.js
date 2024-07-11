@@ -8,7 +8,7 @@ const MailerService = require('../services/mailer.service');
 const React = db.react;
 const Comment = db.comment;
 const History = db.history;
-const { pagination } = require('../middlewares/pagination');
+const { pagination } = require('../middlewares/pagination.handler');
 
 module.exports = {
     getPhotoById: async (req, res, next) => {
@@ -117,11 +117,7 @@ module.exports = {
             const { id } = req.params;
             const user = req.payload;
 
-            const { sort, page, pageSize, search } = await pagination(
-                req,
-                res,
-                next
-            );
+            const { sort, page, pageSize, search } = req.pagination;
 
             const album = await Album.findOne(
                 {

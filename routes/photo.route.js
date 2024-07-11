@@ -2,6 +2,7 @@ const express = require('express');
 const photoRouter = express.Router();
 const { PhotoController } = require('../controllers');
 const { JwtConfig } = require('../configs');
+const paginationHandler = require('../middlewares/pagination.handler');
 
 photoRouter.get(
     '/recent-view',
@@ -17,7 +18,7 @@ photoRouter.get(
 
 photoRouter.get(
     '/:id/comments',
-    JwtConfig.verifyAccessToken,
+    [JwtConfig.verifyAccessToken, paginationHandler],
     PhotoController.getCommentByPhotoId
 );
 photoRouter.post(
