@@ -28,6 +28,12 @@ albumRouter.get(
     AlbumController.getAlbumById
 );
 
+albumRouter.patch(
+    '/:albumId',
+    JwtConfig.verifyAccessToken,
+    AlbumController.updateAlbumById
+)
+
 albumRouter.get(
     '/:albumId/add-random-photos',
     JwtConfig.verifyAccessToken,
