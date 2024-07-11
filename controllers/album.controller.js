@@ -127,12 +127,12 @@ module.exports = {
                 search === ''
                     ? { album: albumId }
                     : {
-                          album: albumId,
-                          $or: [
-                              { title: { $regex: search, $options: 'i' } },
-                              { tags: { $in: [search] } },
-                          ],
-                      };
+                        album: albumId,
+                        $or: [
+                            { title: { $regex: search, $options: 'i' } },
+                            { tags: { $in: [search] } },
+                        ],
+                    };
 
             const totalElements = await Photo.countDocuments(searchQuery);
 
@@ -471,6 +471,84 @@ module.exports = {
             await client.del(`inviteToken-${inviteToken}`);
             res.status(200).json(album);
         } catch (error) {
+            next(error);
+        }
+    },
+
+    modifyAlbum: async (req, res, next) => {
+        try {
+            const user = req.payload;          
+            const { albumId } = req.params;
+            const { title, description, status } = req.body;
+
+            const album = await Album.findById({
+                _id: albumId,
+                status: 'ACTIVE',
+            });
+            if (!album) {
+                throw createError(404, 'Album not found');
+            }
+
+            if (album.owner.toString() !== user.aud) {
+                throw createError(403, 'You do not have permission to modify this album');
+            }
+
+            console.log(title + ` ` + description);
+            const oldAlbumTitle = album.title;
+
+            // Cập nhật thông tin album
+            album.title = title || album.title;
+            album.description = description || album.description;
+            album.status = status || album.status;
+
+            // Lưu album đã cập nhật
+            const updatedAlbum = await album.save();
+
+            const newNoti = await Notification.create({
+                user: user.aud,
+                type: 'ALBUM',
+                receivers: album.members,
+                content: `${user.username} updated the information of album ${oldAlbumTitle}`,
+                redirectUrl: `/album/${album._id}`,
+            });
+
+            album.members.forEach(async (member) => {
+                if (member.toString() !== user.aud) {
+                    const memberNoti = await User.findById({
+                        _id: member,
+                    });
+                    await memberNoti.addNotification(newNoti._id);
+
+                    // await MailerService.sendUserAlbumUpdatedEmail(
+                    //     memberNoti,
+                    //     user,
+                    //     album
+                    // );
+                }
+            });
+
+            res.status(200).json({
+                _id: newNoti._id,
+                user: {
+                    _id: user.aud,
+                    username: user.username,
+                    fullName: user.fullName,
+                    email: user.email,
+                    img: user.img,
+                },
+                type: newNoti.type,
+                content: newNoti.content,
+                redirectUrl: newNoti.redirectUrl,
+                createdAt: newNoti.createdAt,
+                receivers: album.members,
+                seen: newNoti.seen,
+                albumId: album._id,
+            });
+        } catch (error) {
+            if (error.errors) {
+                const errors = Object.values(error.errors).map(err => err.message);
+                error = createError(422, { message: errors.join(', ') });
+            }
             next(error);
         }
     },

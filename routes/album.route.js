@@ -51,4 +51,11 @@ albumRouter.post(
     JwtConfig.verifyAccessToken,
     AlbumController.acceptInvitationToAlbum
 );
+
+albumRouter.put(
+    '/:albumId/modify',
+    JwtConfig.verifyAccessToken,
+    AlbumController.modifyAlbum
+);
+
 module.exports = albumRouter;
