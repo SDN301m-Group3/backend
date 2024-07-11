@@ -80,7 +80,7 @@ groupRouter.put(
 //modify group
 groupRouter.put(
     '/:groupId/modify',
-    [JwtConfig.verifyAccessToken,imageUploadHandler.single('image')],
+    [JwtConfig.verifyAccessToken,imageUploadHandler.single('groupImg')],
     GroupController.modifyGroup
 );
 
