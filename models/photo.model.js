@@ -97,5 +97,18 @@ PhotoSchema.methods.removeReact = function (reactId) {
     return this.save();
 };
 
+PhotoSchema.post('save', async function (doc, next) {
+    try {
+        await mongoose.model('album').findByIdAndUpdate(doc.album, {
+            $addToSet: { photos: doc._id },
+        });
+        await mongoose.model('user').findByIdAndUpdate(doc.owner, {
+            $addToSet: { photos: doc._id },
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
 const Photo = mongoose.model('photo', PhotoSchema);
 module.exports = Photo;

@@ -22,5 +22,15 @@ const HistorySchema = new Schema(
     { timestamps: true }
 );
 
+HistorySchema.post('save', async function (doc, next) {
+    try {
+        await mongoose.model('user').findByIdAndUpdate(doc.user, {
+            $addToSet: { history: doc._id },
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
 const History = mongoose.model('history', HistorySchema);
 module.exports = History;

@@ -27,5 +27,18 @@ const CommentSchema = new Schema(
     { timestamps: true }
 );
 
+CommentSchema.post('save', async function (doc, next) {
+    try {
+        await mongoose.model('photo').findByIdAndUpdate(doc.photo, {
+            $addToSet: { comments: doc._id },
+        });
+        await mongoose.model('user').findByIdAndUpdate(doc.user, {
+            $addToSet: { comments: doc._id },
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
 const Comment = mongoose.model('comment', CommentSchema);
 module.exports = Comment;

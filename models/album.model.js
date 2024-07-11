@@ -74,11 +74,21 @@ AlbumSchema.methods.removeMember = function (userId) {
 
 AlbumSchema.query.belongTo = function (userId) {
     return this.where({ members: { $in: [userId] } });
-}
+};
 
 AlbumSchema.query.isActive = function () {
     return this.where({ status: 'ACTIVE' });
-}
+};
+
+AlbumSchema.post('save', async function (doc, next) {
+    try {
+        await mongoose
+            .model('group')
+            .findByIdAndUpdate(doc.group, { $addToSet: { albums: doc._id } });
+    } catch (error) {
+        next(error);
+    }
+});
 
 const Album = mongoose.model('album', AlbumSchema);
 module.exports = Album;

@@ -78,5 +78,15 @@ GroupSchema.methods.removeAlbum = function (albumId) {
     return this.save();
 };
 
+GroupSchema.post('save', async function (doc, next) {
+    try {
+        await mongoose.model('user').findByIdAndUpdate(doc.owner, {
+            $addToSet: { groups: doc._id },
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
 const Group = mongoose.model('group', GroupSchema);
 module.exports = Group;

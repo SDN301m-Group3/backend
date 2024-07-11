@@ -47,5 +47,30 @@ NotificationSchema.methods.markAsSeen = function (userId) {
     return this.save();
 };
 
+NotificationSchema.post('save', async function (doc, next) {
+    try {
+        const type = doc.type.toLowerCase();
+        if (type === 'user') {
+            await mongoose.model('user').findByIdAndUpdate(doc.receivers, {
+                $addToSet: { notifications: doc._id },
+            });
+        } else {
+            const members = await mongoose
+                .model(type)
+                .findById(doc.receivers)
+                .select('members')
+                .ne('members', doc.user);
+
+            for (const member of members) {
+                await mongoose.model('user').findByIdAndUpdate(member, {
+                    $addToSet: { notifications: doc._id },
+                });
+            }
+        }
+    } catch (error) {
+        next(error);
+    }
+});
+
 const Notification = mongoose.model('notification', NotificationSchema);
 module.exports = Notification;
