@@ -52,7 +52,7 @@ module.exports = {
         } catch (error) {
             if (error.errors) {
                 const errors = Object.values(error.errors).map(
-                    err => err.message
+                    (err) => err.message
                 );
                 error = createError(422, { message: errors.join(', ') });
             }
@@ -87,7 +87,7 @@ module.exports = {
         } catch (error) {
             if (error.errors) {
                 const errors = Object.values(error.errors).map(
-                    err => err.message
+                    (err) => err.message
                 );
                 error = createError(422, { message: errors.join(', ') });
             }
@@ -131,7 +131,7 @@ module.exports = {
             const userId = await JwtConfig.verifyRefreshToken(refreshToken);
 
             const keys = await client.keys(`refreshToken-*-${userId}`);
-            keys.forEach(async key => {
+            keys.forEach(async (key) => {
                 await client.del(key);
             });
             res.sendStatus(204);
@@ -144,13 +144,13 @@ module.exports = {
             const { token } = req.params;
             const { active } = req.query;
 
-            if (!token) throw createError.BadRequest();
+            if (!token) throw createError.BadRequest('Invalid user token');
 
             const userId = await client.get(`emailActivationToken-${token}`);
-            if (!userId) throw createError.BadRequest();
+            if (!userId) throw createError.BadRequest('Invalid user token');
 
             const user = await User.findById(userId);
-            if (!user) throw createError.BadRequest();
+            if (!user) throw createError.BadRequest('Invalid user token');
 
             if (active === 'EMAIL_VERIFY') {
                 user.status = 'ACTIVE';

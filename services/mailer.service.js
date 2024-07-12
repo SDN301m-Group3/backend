@@ -11,7 +11,7 @@ const client = require('../configs/redis.config');
 const { NodemailerConfig } = require('../configs');
 const likePhoto = require('../templates/likePhoto.template');
 const inviteToAlbum = require('../templates/inviteToAlbum.template');
-const reactPhoto = require('../templates/reactPhoto.template')
+const reactPhoto = require('../templates/reactPhoto.template');
 
 const EXPIRED_TIME = 900;
 
@@ -33,14 +33,14 @@ class MailerService {
         const htmlToSend = template({
             email: user.email,
             siteConfigName: process.env.FRONTEND_SITE_NAME,
-            activeLink: `${process.env.BACKEND_URL}/auth/activate/${activationToken}?active=EMAIL_VERIFY`,
+            activeLink: `${process.env.FRONTEND_URL}/active/${activationToken}?active=EMAIL_VERIFY`,
         });
 
         const mailOptions = {
             from: process.env.EMAIL_NAME,
             to: user.email,
             subject: `Activate your account ${process.env.FRONTEND_SITE_NAME}`,
-            text: `Welcome ${user.email} to ${process.env.FRONTEND_SITE_NAME}. Link to active your account: ${process.env.BACKEND_URL}/auth/activate/${activationToken}?active=EMAIL_VERIFY`,
+            text: `Welcome ${user.email} to ${process.env.FRONTEND_SITE_NAME}. Link to active your account: ${process.env.FRONTEND_URL}/active/${activationToken}?active=EMAIL_VERIFY`,
             html: htmlToSend,
         };
 
