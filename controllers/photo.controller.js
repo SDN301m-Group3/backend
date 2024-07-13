@@ -288,7 +288,7 @@ module.exports = {
                 user: user.aud,
                 type: 'USER',
                 receivers: photo.owner._id,
-                content: `${user.username} commented on your photo ${photo?.title}`,
+                content: `${user.username} commented on your photo ${photo?.title ? photo?.title : ''}`,
                 redirectUrl: `/photo/${id}`,
             });
 
