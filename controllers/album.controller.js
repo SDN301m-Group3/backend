@@ -300,12 +300,12 @@ module.exports = {
                     });
                     await memberNoti.addNotification(newNoti._id);
 
-                    await MailerService.sendUserUploadPhotoEmail(
-                        memberNoti,
-                        user,
-                        photo,
-                        album
-                    );
+                    // await MailerService.sendUserUploadPhotoEmail(
+                    //     memberNoti,
+                    //     user,
+                    //     photo,
+                    //     album
+                    // );
                 }
             });
 

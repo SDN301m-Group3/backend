@@ -297,7 +297,7 @@ module.exports = {
                 { $push: { notifications: newNoti._id } }
             );
 
-            await MailerService.sendUserLikePhotoEmail(user, photo, newComment);
+            // await MailerService.sendUserLikePhotoEmail(user, photo, newComment);
 
             res.status(200).json({
                 _id: newNoti._id,
@@ -413,7 +413,7 @@ module.exports = {
                 { $push: { notifications: newNoti._id } }
             );
 
-            await MailerService.sendUserReactPhotoEmail(user, photo, newNoti);
+            // await MailerService.sendUserReactPhotoEmail(user, photo, newNoti);
 
             res.status(200).json({
                 _id: newNoti._id,
