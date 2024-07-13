@@ -187,7 +187,7 @@ class MailerService {
         const htmlToSend = template({
             username: user.username,
             album: album.title,
-            albumImg: album.photos[0].url,
+            albumImg: album.photos.length !== 0 ? album.photos[0].url : '',
             siteConfigName: process.env.FRONTEND_SITE_NAME,
             joinLink: `${process.env.FRONTEND_URL}/album/${album._id}/invite?inviteToken=${inviteToken}`,
         });
