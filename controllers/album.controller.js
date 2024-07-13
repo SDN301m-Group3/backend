@@ -1,6 +1,5 @@
 const Album = require('../models/album.model');
 const createError = require('http-errors');
-const mongoose = require('mongoose');
 const Photo = require('../models/photo.model');
 const Notification = require('../models/notification.model');
 const User = require('../models/user.model');
@@ -9,6 +8,7 @@ const MailerService = require('../services/mailer.service');
 const client = require('../configs/redis.config');
 const { randomUUID } = require('crypto');
 const Group = require('../models/group.model');
+const EmailQueueService = require('../services/emailQueue.service');
 
 axios.defaults.baseURL = 'https://api.unsplash.com/';
 
@@ -101,10 +101,14 @@ module.exports = {
         const { albumId } = req.params;
         const changes = req.body;
 
-        const album = await Album.findOne({_id: albumId}).belongTo(user.aud).isActive();
+        const album = await Album.findOne({ _id: albumId })
+            .belongTo(user.aud)
+            .isActive();
         if (!album) throw createError(404, 'Album not found');
 
-        const isChangeAllowed = Object.keys(changes).every(key => ALLOW_CHANGE_FIELDS.includes(key));
+        const isChangeAllowed = Object.keys(changes).every((key) =>
+            ALLOW_CHANGE_FIELDS.includes(key)
+        );
         if (!isChangeAllowed) throw createError(400, 'Invalid change fields');
 
         const { acknowledged } = await album.updateOne(changes);
@@ -113,7 +117,7 @@ module.exports = {
         res.status(200).json({
             message: 'Album updated successfully',
             albumId,
-            changes
+            changes,
         });
     },
     getPhotosByAlbumId: async (req, res, next) => {
@@ -387,11 +391,14 @@ module.exports = {
 
             await invitedUser.addNotification(newNoti._id);
 
-            await MailerService.sendInviteToAlbumEmail(
-                invitedUser,
-                album,
-                inviteToken
-            );
+            EmailQueueService.add({
+                type: 'inviteToAlbum',
+                data: {
+                    user: invitedUser,
+                    album,
+                    inviteToken,
+                },
+            });
 
             res.status(200).json({
                 _id: newNoti._id,

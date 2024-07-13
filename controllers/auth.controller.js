@@ -7,6 +7,7 @@ const bcrypt = require('bcrypt');
 const os = require('os');
 const { selector } = require('../utils');
 const client = require('../configs/redis.config');
+const EmailQueueService = require('../services/emailQueue.service');
 
 module.exports = {
     register: async (req, res, next) => {
@@ -39,7 +40,12 @@ module.exports = {
             });
             const savedUser = await user.save();
 
-            await MailerService.sendActivationEmail(savedUser);
+            EmailQueueService.add({
+                type: 'activation',
+                data: {
+                    user: savedUser,
+                },
+            });
 
             const userObject = selector(savedUser.toObject(), [
                 'fullName',
