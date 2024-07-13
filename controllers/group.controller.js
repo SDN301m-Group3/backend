@@ -7,6 +7,7 @@ const Album = require('../models/album.model');
 const User = require('../models/user.model');
 const Notification = require('../models/notification.model');
 const client = require('../configs/redis.config');
+const EmailQueueService = require('../services/emailQueue.service');
 
 const createError = require('http-errors');
 const mongoose = require('mongoose');
@@ -343,10 +344,13 @@ module.exports = {
                 });
                 await memberNoti.addNotification(newNoti._id);
 
-                await MailerService.sendOwnerRemovedGroupEmail(
-                    memberNoti,
-                    group
-                );
+                EmailQueueService.add({
+                    type: 'ownerRemovedGroup',
+                    data: {
+                        user: memberNoti,
+                        group,
+                    },
+                });
             });
 
             res.status(200).json({
@@ -426,11 +430,14 @@ module.exports = {
 
             await invitedUser.addNotification(newNoti._id);
 
-            await MailerService.sendInviteToGroupEmail(
-                invitedUser,
-                group,
-                inviteToken
-            );
+            EmailQueueService.add({
+                type: 'inviteToGroup',
+                data: {
+                    user: invitedUser,
+                    group,
+                    inviteToken,
+                },
+            });
 
             res.status(200).json({
                 _id: newNoti._id,
@@ -559,10 +566,13 @@ module.exports = {
 
             await userToRemove.addNotification(newNoti._id);
 
-            await MailerService.sendRemoveUserFromGroupEmail(
-                userToRemove,
-                group
-            );
+            EmailQueueService.add({
+                type: 'removeUserFromGroup',
+                data: {
+                    user: userToRemove,
+                    group,
+                },
+            });
 
             res.status(200).json({
                 _id: newNoti._id,
@@ -597,7 +607,10 @@ module.exports = {
             }
 
             if (group.owner.toString() !== user.aud) {
-                throw createError(403, 'You do not have permission to modify this group');
+                throw createError(
+                    403,
+                    'You do not have permission to modify this group'
+                );
             }
 
             const oldGroupTitle = group.title;
@@ -618,14 +631,14 @@ module.exports = {
                 content: `${user.username} updated the information of group ${oldGroupTitle}`,
                 redirectUrl: `/group/${group._id}`,
             });
-            
+
             group.members.forEach(async (member) => {
                 if (member.toString() !== user.aud) {
                     const memberNoti = await User.findById({
                         _id: member,
                     });
                     await memberNoti.addNotification(newNoti._id);
-            
+
                     await MailerService.sendUserGroupUpdatedEmail(
                         memberNoti,
                         user,
@@ -633,7 +646,7 @@ module.exports = {
                     );
                 }
             });
-            
+
             res.status(200).json({
                 _id: newNoti._id,
                 user: {
@@ -653,7 +666,9 @@ module.exports = {
             });
         } catch (error) {
             if (error.errors) {
-                const errors = Object.values(error.errors).map(err => err.message);
+                const errors = Object.values(error.errors).map(
+                    (err) => err.message
+                );
                 error = createError(422, { message: errors.join(', ') });
             }
             next(error);
