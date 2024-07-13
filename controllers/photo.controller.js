@@ -486,4 +486,30 @@ module.exports = {
             next(error);
         }
     },
+    editPhoto: async (req, res, next) => {
+        try {
+            const { title, tags } = req.body;
+            const { id } = req.params;
+            const user = req.payload;
+
+            const photo = await Photo.findOne({ _id: id, status: 'ACTIVE' });
+
+            if (!photo) {
+                throw createError(404, 'Photo not found');
+            }
+
+            if (photo.owner.toString() !== user.aud) {
+                throw createError(
+                    403,
+                    'You do not have permission to edit this photo'
+                );
+            }
+
+            await photo.updateOne({ title, tags });
+
+            res.status(200).json({ message: 'Photo updated successfully' });
+        } catch (error) {
+            next(error);
+        }
+    },
 };
