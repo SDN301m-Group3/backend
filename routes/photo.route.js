@@ -33,4 +33,10 @@ photoRouter.post(
     PhotoController.createReact
 );
 
+photoRouter.patch(
+    '/:id',
+    JwtConfig.verifyAccessToken,
+    PhotoController.editPhoto
+);
+
 module.exports = photoRouter;
