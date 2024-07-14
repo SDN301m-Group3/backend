@@ -16,6 +16,12 @@ photoRouter.get(
     PhotoController.getPhotoById
 );
 
+photoRouter.post(
+    '/:photoId',
+    JwtConfig.verifyAccessToken,
+    PhotoController.updatePhoto
+);
+
 photoRouter.get(
     '/:id/comments',
     [JwtConfig.verifyAccessToken, paginationHandler],
