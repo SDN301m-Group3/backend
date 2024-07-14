@@ -112,6 +112,37 @@ module.exports = {
         }
     },
 
+    updatePhoto: async (req, res, next) => {
+        try {
+            const ALLOW_CHANGE_FIELDS = ['title', 'tags'];
+            const { photoId } = req.params;
+            const user = req.payload;
+            const changes = req.body;
+
+            const photo = await Photo.findOne({ _id: photoId })
+                .belongTo(user.aud)
+                .isActive();
+            if (!photo) throw createError(404, 'Photo not found');
+
+            const isChangeAllowed = Object.keys(changes).every((key) =>
+                ALLOW_CHANGE_FIELDS.includes(key)
+            );
+            if (!isChangeAllowed)
+                throw createError(400, 'Invalid change fields');
+
+            const { acknowledged } = await photo.updateOne(changes);
+            if (!acknowledged) throw createError(500, 'Internal server error');
+
+            res.status(200).json({
+                message: 'Photo updated successfully',
+                photoId,
+                changes,
+            });
+        } catch (error) {
+            next(error);
+        }
+    },
+
     getCommentByPhotoId: async (req, res, next) => {
         try {
             const { id } = req.params;

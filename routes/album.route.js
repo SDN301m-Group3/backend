@@ -29,7 +29,7 @@ albumRouter.get(
     AlbumController.getAlbumById
 );
 
-albumRouter.patch(
+albumRouter.post(
     '/:albumId',
     JwtConfig.verifyAccessToken,
     AlbumController.updateAlbumById
