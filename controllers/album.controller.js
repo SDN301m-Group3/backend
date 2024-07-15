@@ -3,6 +3,7 @@ const createError = require('http-errors');
 const Photo = require('../models/photo.model');
 const Notification = require('../models/notification.model');
 const User = require('../models/user.model');
+const History = require('../models/history.model')
 const axios = require('axios');
 const MailerService = require('../services/mailer.service');
 const client = require('../configs/redis.config');
@@ -90,6 +91,14 @@ module.exports = {
             if (!album) {
                 throw createError(404, 'Album not found');
             }
+            const isUserInGroup = await Group.exists({
+                _id: album.group._id,
+                members: { $in: [user.aud] },
+            });
+
+            if (!isUserInGroup) {
+                throw createError(403, 'User is not a member of the group');
+            }
             res.status(200).json(album);
         } catch (error) {
             next(error);
@@ -127,19 +136,15 @@ module.exports = {
 
             const { sort, page, pageSize, search } = req.pagination;
 
-            const album = await Album.findOne(
-                {
-                    _id: albumId,
-                    members: { $in: [user.aud] },
-                    status: 'ACTIVE',
-                },
-                {
-                    _id: 1,
-                }
-            );
+            const album = req.album;
 
-            if (!album) {
-                throw createError(404, 'Album not found');
+            const isUserInGroup = await Group.exists({
+                _id: album.group.toString(),
+                members: { $in: [user.aud] },
+            });
+
+            if (!isUserInGroup) {
+                throw createError(403, 'User is not a member of the group');
             }
 
             const searchQuery =
@@ -270,14 +275,15 @@ module.exports = {
                 return res.status(400).send('No file uploaded.');
             }
 
-            const album = await Album.findOne({
-                _id: albumId,
+            const album = req.album;
+
+            const isUserInGroup = await Group.exists({
+                _id: album.group.toString(),
                 members: { $in: [user.aud] },
-                status: 'ACTIVE',
             });
 
-            if (!album) {
-                throw createError(404, 'Album not found');
+            if (!isUserInGroup) {
+                throw createError(403, 'User is not a member of the group');
             }
 
             const photo = await Photo.create({
@@ -335,21 +341,91 @@ module.exports = {
         }
     },
 
+    removePhotoFromAlbum: async (req, res, next) => {
+        try {
+            const albumId  = req.params.albumId;
+            const photoId = req.params.photoId;
+            const user = req.payload;
+    
+            const album = await Album.findOne({
+                _id: albumId,
+                members: { $in: [user.aud] },
+                status: 'ACTIVE',
+            });
+    
+            if (!album) {
+                throw createError(404, 'Album not found');
+            }
+    
+            const photo = await Photo.findOne({
+                _id: photoId,
+                album: albumId,
+                owner: user.aud,
+            });
+    
+            if (!photo) {
+                throw createError(404, 'Photo not found');
+            }
+
+            if (photo.owner.toString() !== user.aud) {
+                throw createError(403, 'Permission denied. You are not the owner of this photo.');
+            }
+    
+            await Photo.updateOne(
+                { _id: photo._id },
+                { $set: { status: 'DELETED' } }
+            );
+
+            await History.create({
+                user: user.aud,
+                actionType: 'DELETE',
+                photo: photo._id,
+            });
+
+            const newNoti = await Notification.create({
+                user: user.aud,
+                type: 'ALBUM',
+                receivers: album._id,
+                content: `${user.username} removed a photo from album ${album.title}`,
+                redirectUrl: `/photo/${photo._id}`,
+            });
+
+            album.members.forEach(async (member) => {
+                if (member.toString() !== user.aud) {
+                    const memberNoti = await User.findById(member);
+                    await memberNoti.addNotification(newNoti._id);
+                }
+            });
+    
+            res.status(200).json({
+                _id: newNoti._id,
+                user: {
+                    _id: user.aud,
+                    username: user.username,
+                    fullName: user.fullName,
+                    email: user.email,
+                    img: user.img,
+                },
+                type: newNoti.type,
+                content: newNoti.content,
+                redirectUrl: newNoti.redirectUrl,
+                createdAt: newNoti.createdAt,
+                receivers: album.members,
+                seen: newNoti.seen,
+                albumId: album._id,
+            });
+        } catch (error) {
+            next(error);
+        }
+    },
+
     inviteUserToAlbum: async (req, res, next) => {
         try {
             const user = req.payload;
             const { albumId } = req.params;
             const { email } = req.body;
 
-            const album = await Album.findById({
-                _id: albumId,
-                members: { $in: [user.aud] },
-                status: 'ACTIVE',
-            });
-
-            if (!album) {
-                throw createError(404, 'Album not found');
-            }
+            const album = req.album;
 
             const invitedUser = await User.findOne({
                 email,
@@ -580,9 +656,6 @@ module.exports = {
             const { albumId } = req.params;
             const { time } = req.body;
 
-            console.log(time);
-            console.log(albumId);
-
             const SHARE_EXPIRED_TIME = time;
 
             if (isNaN(SHARE_EXPIRED_TIME)) {
@@ -594,6 +667,7 @@ module.exports = {
                 members: { $in: [user.aud] },
                 status: 'ACTIVE',
             });
+
 
             const shareToken = `${randomUUID()}${randomUUID()}`.replace(
                 /-/g,
