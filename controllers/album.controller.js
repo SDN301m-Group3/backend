@@ -393,7 +393,6 @@ module.exports = {
             });
     
             res.status(200).json({
-                message: 'Photo removed successfully',
                 _id: newNoti._id,
                 user: {
                     _id: user.aud,
@@ -406,7 +405,7 @@ module.exports = {
                 content: newNoti.content,
                 redirectUrl: newNoti.redirectUrl,
                 createdAt: newNoti.createdAt,
-                receivers: newNoti.receivers,
+                receivers: album.members,
                 seen: newNoti.seen,
                 albumId: album._id,
             });
