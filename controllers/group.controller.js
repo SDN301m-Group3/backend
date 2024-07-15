@@ -271,14 +271,27 @@ module.exports = {
             const { title, description } = createAlbumFormSchema.parse(
                 req.body
             );
+            const groupId = req.params.groupId;
+
+            const group = await Group.findById(groupId);
+
+            if (!group) {
+                throw createError(404, 'Group not found');
+            }
+
             const album = new Album({
                 title,
                 description,
                 owner: new mongoose.Types.ObjectId(user.aud),
-                group: new mongoose.Types.ObjectId(req.params.groupId),
+                group: new mongoose.Types.ObjectId(groupId),
             });
             const savedAlbum = await album.save();
             await savedAlbum.addMember(user.aud);
+
+            if (group.owner.toString() !== user.aud) {
+                await savedAlbum.addMember(group.owner.toString());
+            }
+
             // if i add a album
             await Group.findByIdAndUpdate(req.params.groupId, {
                 $addToSet: { albums: savedAlbum._id },
