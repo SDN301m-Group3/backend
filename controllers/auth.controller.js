@@ -40,12 +40,14 @@ module.exports = {
             });
             const savedUser = await user.save();
 
-            EmailQueueService.add({
-                type: 'activation',
-                data: {
-                    user: savedUser,
-                },
-            });
+            // EmailQueueService.add({
+            //     type: 'activation',
+            //     data: {
+            //         user: savedUser,
+            //     },
+            // });
+
+            await MailerService.sendActivationEmail(savedUser);
 
             const userObject = selector(savedUser.toObject(), [
                 'fullName',
