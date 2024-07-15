@@ -112,6 +112,7 @@ const UserSchema = new Schema(
                 modifiedAlbum: { type: Boolean, default: true },
                 userLeftGroup: { type: Boolean, default: true },
                 userLeftAlbum: { type: Boolean, default: true },
+                memberUploadPhoto: { type: Boolean, default: true },
             },
             email: {
                 comment: { type: Boolean, default: true },
@@ -129,6 +130,7 @@ const UserSchema = new Schema(
                 modifiedAlbum: { type: Boolean, default: true },
                 userLeftGroup: { type: Boolean, default: true },
                 userLeftAlbum: { type: Boolean, default: true },
+                memberUploadPhoto: { type: Boolean, default: true },
             },
         },
     },
