@@ -611,7 +611,7 @@ module.exports = {
         try {
             const user = req.payload;
             const { groupId } = req.params;
-            const { title, description, status } = req.body;
+            const { title, description, status, groupImg} = req.body;
             const savedPhoto = req.file;
 
             const group = await Group.findById(groupId);
@@ -631,7 +631,7 @@ module.exports = {
             group.description = description || group.description;
             group.status = status || group.status;
 
-            if (savedPhoto) {
+            if (savedGroup) {
                 group.groupImg = savedPhoto.location;
             }
 

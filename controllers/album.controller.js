@@ -504,32 +504,35 @@ module.exports = {
             const { albumId } = req.params;
             const { title, description, status } = req.body;
 
-            const album = await Album.findById({
+            const album = await Album.findOne({
                 _id: albumId,
                 status: 'ACTIVE',
-            });
+            }).populate('group', 'owner');
+
             if (!album) {
                 throw createError(404, 'Album not found');
             }
-            if (album.owner.toString() !== user.aud) {
-                throw createError(403, 'You do not have permission to modify this album');
+            
+
+            if (album.owner.toString() !== user.aud && album.group?.owner.toString() !== user.aud) {
+                throw createError(
+                    403,
+                    'You do not have permission to modify this album'
+                );
             }
 
-            console.log(title + ` ` + description);
             const oldAlbumTitle = album.title;
 
-            // Cập nhật thông tin album
             album.title = title || album.title;
             album.description = description || album.description;
             album.status = status || album.status;
-
-            // Lưu album đã cập nhật
+          
             const updatedAlbum = await album.save();
 
             const newNoti = await Notification.create({
                 user: user.aud,
                 type: 'ALBUM',
-                receivers: album.members,
+                receivers: album._id,
                 content: `${user.username} updated the information of album ${oldAlbumTitle}`,
                 redirectUrl: `/album/${album._id}`,
             });
@@ -541,11 +544,11 @@ module.exports = {
                     });
                     await memberNoti.addNotification(newNoti._id);
 
-                    // await MailerService.sendUserAlbumUpdatedEmail(
-                    //     memberNoti,
-                    //     user,
-                    //     album
-                    // );
+                    await MailerService.sendUserAlbumUpdateEmail(
+                        memberNoti,
+                        user,
+                        album
+                    );
                 }
             });
 
@@ -567,10 +570,7 @@ module.exports = {
                 albumId: album._id,
             });
         } catch (error) {
-            if (error.errors) {
-                const errors = Object.values(error.errors).map(err => err.message);
-                error = createError(422, { message: errors.join(', ') });
-            }
+            next(error);
         }
     },
 
