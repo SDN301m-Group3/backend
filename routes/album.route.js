@@ -72,7 +72,7 @@ albumRouter.get(
 );
 
 albumRouter.delete(
-    '/:albumId/:photoId',
+    '/:albumId/photos/:photoId',
     JwtConfig.verifyAccessToken,
     AlbumController.removePhotoFromAlbum
 );
