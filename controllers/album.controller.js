@@ -90,6 +90,14 @@ module.exports = {
             if (!album) {
                 throw createError(404, 'Album not found');
             }
+            const isUserInGroup = await Group.exists({
+                _id: album.group._id,
+                members: { $in: [user.aud] },
+            });
+
+            if (!isUserInGroup) {
+                throw createError(403, 'User is not a member of the group');
+            }
             res.status(200).json(album);
         } catch (error) {
             next(error);
@@ -127,19 +135,15 @@ module.exports = {
 
             const { sort, page, pageSize, search } = req.pagination;
 
-            const album = await Album.findOne(
-                {
-                    _id: albumId,
-                    members: { $in: [user.aud] },
-                    status: 'ACTIVE',
-                },
-                {
-                    _id: 1,
-                }
-            );
+            const album = req.album;
 
-            if (!album) {
-                throw createError(404, 'Album not found');
+            const isUserInGroup = await Group.exists({
+                _id: album.group.toString(),
+                members: { $in: [user.aud] },
+            });
+
+            if (!isUserInGroup) {
+                throw createError(403, 'User is not a member of the group');
             }
 
             const searchQuery =
@@ -270,14 +274,15 @@ module.exports = {
                 return res.status(400).send('No file uploaded.');
             }
 
-            const album = await Album.findOne({
-                _id: albumId,
+            const album = req.album;
+
+            const isUserInGroup = await Group.exists({
+                _id: album.group.toString(),
                 members: { $in: [user.aud] },
-                status: 'ACTIVE',
             });
 
-            if (!album) {
-                throw createError(404, 'Album not found');
+            if (!isUserInGroup) {
+                throw createError(403, 'User is not a member of the group');
             }
 
             const photo = await Photo.create({
@@ -341,15 +346,7 @@ module.exports = {
             const { albumId } = req.params;
             const { email } = req.body;
 
-            const album = await Album.findById({
-                _id: albumId,
-                members: { $in: [user.aud] },
-                status: 'ACTIVE',
-            });
-
-            if (!album) {
-                throw createError(404, 'Album not found');
-            }
+            const album = req.album;
 
             const invitedUser = await User.findOne({
                 email,
@@ -504,24 +501,13 @@ module.exports = {
             const { albumId } = req.params;
             const { time } = req.body;
 
-            console.log(time);
-            console.log(albumId);
-
             const SHARE_EXPIRED_TIME = time;
 
             if (isNaN(SHARE_EXPIRED_TIME)) {
                 throw createError(400, 'Invalid time value');
             }
 
-            const album = await Album.findOne({
-                _id: albumId,
-                members: { $in: [user.aud] },
-                status: 'ACTIVE',
-            });
-
-            if (!album) {
-                throw createError(404, 'Album not found');
-            }
+            const album = req.album;
 
             const shareToken = `${randomUUID()}${randomUUID()}`.replace(
                 /-/g,
