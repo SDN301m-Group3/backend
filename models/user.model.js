@@ -95,6 +95,30 @@ const UserSchema = new Schema(
             required: false,
             maxLength: [200, 'Bio must be at most 200 characters'],
         },
+        preferences: {
+            notifications: {
+                comment: { type: Boolean, default: true },
+                react: { type: Boolean, default: true },
+                inviteToAlbum: { type: Boolean, default: true },
+                inviteToGroup: { type: Boolean, default: true },
+                removeToGroup: { type: Boolean, default: true },
+                removeToAlbum: { type: Boolean, default: true },
+                ownerRemoveGroup: { type: Boolean, default: true },
+                ownerRemoveAlbum: { type: Boolean, default: true },
+                ownerRemovePhoto: { type: Boolean, default: true },
+            },
+            email: {
+                comment: { type: Boolean, default: true },
+                react: { type: Boolean, default: true },
+                inviteToAlbum: { type: Boolean, default: true },
+                inviteToGroup: { type: Boolean, default: true },
+                removeToGroup: { type: Boolean, default: true },
+                removeToAlbum: { type: Boolean, default: true },
+                ownerRemoveGroup: { type: Boolean, default: true },
+                ownerRemoveAlbum: { type: Boolean, default: true },
+                ownerRemovePhoto: { type: Boolean, default: true },
+            },
+        },
     },
     { timestamps: true }
 );
