@@ -352,7 +352,7 @@ module.exports = {
                     'You do not have permission to remove this group'
                 );
             }
-            group.status = 'DELETED';            
+            group.status = 'DELETED';
             await group.save();
             await Album.updateMany({ group: groupId }, { status: 'DELETED' });
 
@@ -580,6 +580,10 @@ module.exports = {
                 members: { $in: [userId] },
             });
             for (const album of albums) {
+                if (album.owner.toString() === userId) {
+                    album.owner = group.owner;
+                    await album.save();
+                }
                 await album.removeMember(userId);
             }
 
@@ -625,7 +629,7 @@ module.exports = {
         try {
             const user = req.payload;
             const { groupId } = req.params;
-            const { title, description, status, groupImg} = req.body;
+            const { title, description, status, groupImg } = req.body;
             const savedPhoto = req.file;
 
             const group = await Group.findById(groupId);
@@ -730,6 +734,19 @@ module.exports = {
                 { $pull: { groups: group._id } },
                 { new: true }
             );
+
+            // Remove user from all albums in the group
+            const albums = await Album.find({
+                group: groupId,
+                members: { $in: [user.aud] },
+            });
+            for (const album of albums) {
+                if (album.owner.toString() === user.aud) {
+                    album.owner = group.owner;
+                    await album.save();
+                }
+                await album.removeMember(user.aud);
+            }
 
             const newNoti = await Notification.create({
                 user: user.aud,
