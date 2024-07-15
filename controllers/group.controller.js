@@ -271,14 +271,27 @@ module.exports = {
             const { title, description } = createAlbumFormSchema.parse(
                 req.body
             );
+            const groupId = req.params.groupId;
+
+            const group = await Group.findById(groupId);
+
+            if (!group) {
+                throw createError(404, 'Group not found');
+            }
+
             const album = new Album({
                 title,
                 description,
                 owner: new mongoose.Types.ObjectId(user.aud),
-                group: new mongoose.Types.ObjectId(req.params.groupId),
+                group: new mongoose.Types.ObjectId(groupId),
             });
             const savedAlbum = await album.save();
             await savedAlbum.addMember(user.aud);
+
+            if (group.owner.toString() !== user.aud) {
+                await savedAlbum.addMember(group.owner.toString());
+            }
+
             // if i add a album
             await Group.findByIdAndUpdate(req.params.groupId, {
                 $addToSet: { albums: savedAlbum._id },
@@ -651,7 +664,7 @@ module.exports = {
                         _id: member,
                     });
                     await memberNoti.addNotification(newNoti._id);
-            
+
                     await MailerService.sendUserGroupUpdateMail(
                         memberNoti,
                         group
@@ -690,13 +703,13 @@ module.exports = {
         try {
             const user = req.payload;
             const { groupId } = req.params;
-    
+
             const group = await Group.findById(groupId);
-    
+
             if (!group) {
                 throw createError(404, 'Group not found');
             }
-    
+
             if (group.owner.toString() === user.aud) {
                 throw createError(400, 'Owner cannot out Group');
             }
@@ -704,13 +717,13 @@ module.exports = {
             if (!group.members.includes(user.aud)) {
                 throw createError(400, 'You are not a member of this group');
             }
-    
+
             await Group.findOneAndUpdate(
                 { _id: group._id },
                 { $pull: { members: user.aud } },
                 { new: true }
-            );    
-    
+            );
+
             await User.findOneAndUpdate(
                 { _id: user.aud },
                 { $pull: { groups: group._id } },
