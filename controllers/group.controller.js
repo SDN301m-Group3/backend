@@ -640,7 +640,7 @@ module.exports = {
             const newNoti = await Notification.create({
                 user: user.aud,
                 type: 'GROUP',
-                receivers: group.members,
+                receivers: group._id,
                 content: `${user.username} updated the information of group ${oldGroupTitle}`,
                 redirectUrl: `/group/${group._id}`,
             });
@@ -651,10 +651,9 @@ module.exports = {
                         _id: member,
                     });
                     await memberNoti.addNotification(newNoti._id);
-
-                    await MailerService.sendUserGroupUpdatedEmail(
+            
+                    await MailerService.sendUserGroupUpdateMail(
                         memberNoti,
-                        user,
                         group
                     );
                 }
