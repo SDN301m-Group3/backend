@@ -84,4 +84,11 @@ groupRouter.put(
     GroupController.modifyGroup
 );
 
+//out group
+groupRouter.put(
+    '/:groupId/out-group',
+    JwtConfig.verifyAccessToken,
+    GroupController.outGroup
+);
+
 module.exports = groupRouter;
