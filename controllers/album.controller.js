@@ -3,6 +3,7 @@ const createError = require('http-errors');
 const Photo = require('../models/photo.model');
 const Notification = require('../models/notification.model');
 const User = require('../models/user.model');
+const History = require('../models/history.model')
 const axios = require('axios');
 const MailerService = require('../services/mailer.service');
 const client = require('../configs/redis.config');
@@ -318,6 +319,84 @@ module.exports = {
                 }
             });
 
+            res.status(200).json({
+                _id: newNoti._id,
+                user: {
+                    _id: user.aud,
+                    username: user.username,
+                    fullName: user.fullName,
+                    email: user.email,
+                    img: user.img,
+                },
+                type: newNoti.type,
+                content: newNoti.content,
+                redirectUrl: newNoti.redirectUrl,
+                createdAt: newNoti.createdAt,
+                receivers: album.members,
+                seen: newNoti.seen,
+                albumId: album._id,
+            });
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    removePhotoFromAlbum: async (req, res, next) => {
+        try {
+            const albumId  = req.params.albumId;
+            const photoId = req.params.photoId;
+            const user = req.payload;
+    
+            const album = await Album.findOne({
+                _id: albumId,
+                members: { $in: [user.aud] },
+                status: 'ACTIVE',
+            });
+    
+            if (!album) {
+                throw createError(404, 'Album not found');
+            }
+    
+            const photo = await Photo.findOne({
+                _id: photoId,
+                album: albumId,
+                owner: user.aud,
+            });
+    
+            if (!photo) {
+                throw createError(404, 'Photo not found');
+            }
+
+            if (photo.owner.toString() !== user.aud) {
+                throw createError(403, 'Permission denied. You are not the owner of this photo.');
+            }
+    
+            await Photo.updateOne(
+                { _id: photo._id },
+                { $set: { status: 'DELETED' } }
+            );
+
+            await History.create({
+                user: user.aud,
+                actionType: 'DELETE',
+                photo: photo._id,
+            });
+
+            const newNoti = await Notification.create({
+                user: user.aud,
+                type: 'ALBUM',
+                receivers: album._id,
+                content: `${user.username} removed a photo from album ${album.title}`,
+                redirectUrl: `/photo/${photo._id}`,
+            });
+
+            album.members.forEach(async (member) => {
+                if (member.toString() !== user.aud) {
+                    const memberNoti = await User.findById(member);
+                    await memberNoti.addNotification(newNoti._id);
+                }
+            });
+    
             res.status(200).json({
                 _id: newNoti._id,
                 user: {

@@ -538,6 +538,12 @@ module.exports = {
 
             await photo.updateOne({ title, tags });
 
+            await History.create({
+                user: user.aud,
+                actionType: 'UPDATE',
+                photo: photo._id,
+            });
+
             res.status(200).json({ message: 'Photo updated successfully' });
         } catch (error) {
             next(error);
