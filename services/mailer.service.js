@@ -13,6 +13,7 @@ const likePhoto = require('../templates/likePhoto.template');
 const inviteToAlbum = require('../templates/inviteToAlbum.template');
 const userGroupUpdateTemplate = require('../templates/userGroupUpdateTemplate');
 const reactPhoto = require('../templates/reactPhoto.template');
+const userAlbumUpdateTemplate = require('../templates/userAlbumUpdate.template');
 
 const EXPIRED_TIME = 900;
 
@@ -219,6 +220,29 @@ class MailerService {
             to: user.email,
             subject: `Group Information Update`,
             text: `Dear ${user.username}, ${group.title} group has updated group owner`,
+            html: htmlToSend,
+        };
+    
+        await NodemailerConfig.transporter.sendMail(mailOptions);
+    
+        return mailOptions;
+    }
+
+    async sendUserAlbumUpdateEmail(user, owner, album) {
+        const template = handlebars.compile(userAlbumUpdateTemplate);
+        const htmlToSend = template({
+            username: user.username,
+            owner: owner.username,
+            albumTitle: album.title,
+            redirectUrl: `${process.env.FRONTEND_URL}/album/${album?._id}`,
+            siteConfigName: process.env.FRONTEND_SITE_NAME
+        });
+    
+        const mailOptions = {
+            from: process.env.EMAIL_NAME,
+            to: user.email,
+            subject: `Album Information Update`,
+            text: `Dear ${user.username}, ${album.title} album has updated by ${owner.username}`,
             html: htmlToSend,
         };
     

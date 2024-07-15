@@ -68,6 +68,11 @@ albumRouter.post(
     AlbumController.acceptInvitationToAlbum
 );
 
+albumRouter.put(
+    '/:albumId/modify',
+    JwtConfig.verifyAccessToken,
+    AlbumController.modifyAlbum
+);
 albumRouter.post(
     '/:albumId/share',
     [JwtConfig.verifyAccessToken, AlbumHandler.isAlbumMember],

@@ -151,13 +151,13 @@ module.exports = {
                 search === ''
                     ? { album: albumId, status: 'ACTIVE' }
                     : {
-                          album: albumId,
-                          status: 'ACTIVE',
-                          $or: [
-                              { title: { $regex: search, $options: 'i' } },
-                              { tags: { $in: [search] } },
-                          ],
-                      };
+                        album: albumId,
+                        status: 'ACTIVE',
+                        $or: [
+                            { title: { $regex: search, $options: 'i' } },
+                            { tags: { $in: [search] } },
+                        ],
+                    };
 
             const totalElements = await Photo.countDocuments(searchQuery);
 
@@ -574,6 +574,82 @@ module.exports = {
         }
     },
 
+    modifyAlbum: async (req, res, next) => {
+        try {
+            const user = req.payload;
+            const { albumId } = req.params;
+            const { title, description, status } = req.body;
+
+            const album = await Album.findOne({
+                _id: albumId,
+                status: 'ACTIVE',
+            }).populate('group', 'owner');
+
+            if (!album) {
+                throw createError(404, 'Album not found');
+            }
+            
+
+            if (album.owner.toString() !== user.aud && album.group?.owner.toString() !== user.aud) {
+                throw createError(
+                    403,
+                    'You do not have permission to modify this album'
+                );
+            }
+
+            const oldAlbumTitle = album.title;
+
+            album.title = title || album.title;
+            album.description = description || album.description;
+            album.status = status || album.status;
+          
+            const updatedAlbum = await album.save();
+
+            const newNoti = await Notification.create({
+                user: user.aud,
+                type: 'ALBUM',
+                receivers: album._id,
+                content: `${user.username} updated the information of album ${oldAlbumTitle}`,
+                redirectUrl: `/album/${album._id}`,
+            });
+
+            album.members.forEach(async (member) => {
+                if (member.toString() !== user.aud) {
+                    const memberNoti = await User.findById({
+                        _id: member,
+                    });
+                    await memberNoti.addNotification(newNoti._id);
+
+                    await MailerService.sendUserAlbumUpdateEmail(
+                        memberNoti,
+                        user,
+                        album
+                    );
+                }
+            });
+
+            res.status(200).json({
+                _id: newNoti._id,
+                user: {
+                    _id: user.aud,
+                    username: user.username,
+                    fullName: user.fullName,
+                    email: user.email,
+                    img: user.img,
+                },
+                type: newNoti.type,
+                content: newNoti.content,
+                redirectUrl: newNoti.redirectUrl,
+                createdAt: newNoti.createdAt,
+                receivers: album.members,
+                seen: newNoti.seen,
+                albumId: album._id,
+            });
+        } catch (error) {
+            next(error);
+        }
+    },
+
     shareAlbum: async (req, res, next) => {
         try {
             const user = req.payload;
@@ -586,7 +662,12 @@ module.exports = {
                 throw createError(400, 'Invalid time value');
             }
 
-            const album = req.album;
+            const album = await Album.findOne({
+                _id: albumId,
+                members: { $in: [user.aud] },
+                status: 'ACTIVE',
+            });
+
 
             const shareToken = `${randomUUID()}${randomUUID()}`.replace(
                 /-/g,
@@ -657,13 +738,13 @@ module.exports = {
                 search === ''
                     ? { album: albumId, status: 'ACTIVE' }
                     : {
-                          album: albumId,
-                          status: 'ACTIVE',
-                          $or: [
-                              { title: { $regex: search, $options: 'i' } },
-                              { tags: { $in: [search] } },
-                          ],
-                      };
+                        album: albumId,
+                        status: 'ACTIVE',
+                        $or: [
+                            { title: { $regex: search, $options: 'i' } },
+                            { tags: { $in: [search] } },
+                        ],
+                    };
 
             const totalElements = await Photo.countDocuments(searchQuery);
 
