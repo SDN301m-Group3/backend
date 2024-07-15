@@ -428,7 +428,7 @@ module.exports = {
 
             const isMemberOfAlbum = await Album.findOne({
                 _id: album._id,
-                members: { $in: [user.aud] },
+                members: { $in: [photo.owner._id] },
             });
 
             if (
