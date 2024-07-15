@@ -45,4 +45,12 @@ photoRouter.patch(
     PhotoController.editPhoto
 );
 
+photoRouter.get(
+    '/:id/reacts',
+    JwtConfig.verifyAccessToken,
+    PhotoController.getReactListOfPhoto
+);
+
+
+
 module.exports = photoRouter;
