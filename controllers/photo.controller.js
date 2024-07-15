@@ -426,7 +426,13 @@ module.exports = {
                 { owner: 1, title: 1, url: 1 }
             ).populate('owner', '_id username email');
 
-            if (user.aud === photo.owner._id.toString()) {
+            if (
+                user.aud === photo.owner._id.toString() ||
+                !(await Album.findOne({
+                    _id: album._id,
+                    members: { $in: [photo.owner._id] },
+                }))
+            ) {
                 res.status(200).json(newReact);
                 return;
             }
