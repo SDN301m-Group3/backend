@@ -326,8 +326,9 @@ module.exports = {
                     'You do not have permission to remove this group'
                 );
             }
-            group.status = 'DELETED';
+            group.status = 'DELETED';            
             await group.save();
+            await Album.updateMany({ group: groupId }, { status: 'DELETED' });
 
             const newNoti = await Notification.create({
                 user: user.aud,
