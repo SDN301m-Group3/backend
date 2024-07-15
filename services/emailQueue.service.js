@@ -58,6 +58,13 @@ emailQueueService.process(async (job, done) => {
                     data.noti
                 );
                 break;
+            case 'userAlbumUpdate':
+                await MailerService.sendUserAlbumUpdateEmail(
+                    data.user,
+                    data.owner,
+                    data.album
+                );
+                break;
             default:
                 throw new Error(`Unknown email type: ${type}`);
         }

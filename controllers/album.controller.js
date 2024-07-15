@@ -3,7 +3,7 @@ const createError = require('http-errors');
 const Photo = require('../models/photo.model');
 const Notification = require('../models/notification.model');
 const User = require('../models/user.model');
-const History = require('../models/history.model')
+const History = require('../models/history.model');
 const axios = require('axios');
 const MailerService = require('../services/mailer.service');
 const client = require('../configs/redis.config');
@@ -151,13 +151,13 @@ module.exports = {
                 search === ''
                     ? { album: albumId, status: 'ACTIVE' }
                     : {
-                        album: albumId,
-                        status: 'ACTIVE',
-                        $or: [
-                            { title: { $regex: search, $options: 'i' } },
-                            { tags: { $in: [search] } },
-                        ],
-                    };
+                          album: albumId,
+                          status: 'ACTIVE',
+                          $or: [
+                              { title: { $regex: search, $options: 'i' } },
+                              { tags: { $in: [search] } },
+                          ],
+                      };
 
             const totalElements = await Photo.countDocuments(searchQuery);
 
@@ -343,34 +343,37 @@ module.exports = {
 
     removePhotoFromAlbum: async (req, res, next) => {
         try {
-            const albumId  = req.params.albumId;
+            const albumId = req.params.albumId;
             const photoId = req.params.photoId;
             const user = req.payload;
-    
+
             const album = await Album.findOne({
                 _id: albumId,
                 members: { $in: [user.aud] },
                 status: 'ACTIVE',
             });
-    
+
             if (!album) {
                 throw createError(404, 'Album not found');
             }
-    
+
             const photo = await Photo.findOne({
                 _id: photoId,
                 album: albumId,
                 owner: user.aud,
             });
-    
+
             if (!photo) {
                 throw createError(404, 'Photo not found');
             }
 
             if (photo.owner.toString() !== user.aud) {
-                throw createError(403, 'Permission denied. You are not the owner of this photo.');
+                throw createError(
+                    403,
+                    'Permission denied. You are not the owner of this photo.'
+                );
             }
-    
+
             await Photo.updateOne(
                 { _id: photo._id },
                 { $set: { status: 'DELETED' } }
@@ -396,7 +399,7 @@ module.exports = {
                     await memberNoti.addNotification(newNoti._id);
                 }
             });
-    
+
             res.status(200).json({
                 _id: newNoti._id,
                 user: {
@@ -588,9 +591,11 @@ module.exports = {
             if (!album) {
                 throw createError(404, 'Album not found');
             }
-            
 
-            if (album.owner.toString() !== user.aud && album.group?.owner.toString() !== user.aud) {
+            if (
+                album.owner.toString() !== user.aud &&
+                album.group?.owner.toString() !== user.aud
+            ) {
                 throw createError(
                     403,
                     'You do not have permission to modify this album'
@@ -602,7 +607,7 @@ module.exports = {
             album.title = title || album.title;
             album.description = description || album.description;
             album.status = status || album.status;
-          
+
             const updatedAlbum = await album.save();
 
             const newNoti = await Notification.create({
@@ -620,11 +625,14 @@ module.exports = {
                     });
                     await memberNoti.addNotification(newNoti._id);
 
-                    await MailerService.sendUserAlbumUpdateEmail(
-                        memberNoti,
-                        user,
-                        album
-                    );
+                    EmailQueueService.add({
+                        type: 'userAlbumUpdate',
+                        data: {
+                            user: memberNoti,
+                            owner: user,
+                            album,
+                        },
+                    });
                 }
             });
 
@@ -667,7 +675,6 @@ module.exports = {
                 members: { $in: [user.aud] },
                 status: 'ACTIVE',
             });
-
 
             const shareToken = `${randomUUID()}${randomUUID()}`.replace(
                 /-/g,
@@ -738,13 +745,13 @@ module.exports = {
                 search === ''
                     ? { album: albumId, status: 'ACTIVE' }
                     : {
-                        album: albumId,
-                        status: 'ACTIVE',
-                        $or: [
-                            { title: { $regex: search, $options: 'i' } },
-                            { tags: { $in: [search] } },
-                        ],
-                    };
+                          album: albumId,
+                          status: 'ACTIVE',
+                          $or: [
+                              { title: { $regex: search, $options: 'i' } },
+                              { tags: { $in: [search] } },
+                          ],
+                      };
 
             const totalElements = await Photo.countDocuments(searchQuery);
 
