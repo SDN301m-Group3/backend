@@ -3,6 +3,7 @@ const albumRouter = express.Router();
 const { AlbumController } = require('../controllers');
 const { JwtConfig } = require('../configs');
 const imageUploadHandler = require('../middlewares/uploadImage.handler');
+const paginationHandler = require('../middlewares/pagination.handler');
 
 albumRouter.put(
     '/delete/:id',
@@ -18,7 +19,7 @@ albumRouter.get(
 
 albumRouter.get(
     '/:albumId/photos',
-    JwtConfig.verifyAccessToken,
+    [JwtConfig.verifyAccessToken, paginationHandler],
     AlbumController.getPhotosByAlbumId
 );
 
@@ -27,6 +28,12 @@ albumRouter.get(
     JwtConfig.verifyAccessToken,
     AlbumController.getAlbumById
 );
+
+albumRouter.post(
+    '/:albumId',
+    JwtConfig.verifyAccessToken,
+    AlbumController.updateAlbumById
+)
 
 albumRouter.get(
     '/:albumId/add-random-photos',
@@ -56,6 +63,17 @@ albumRouter.put(
     '/:albumId/modify',
     JwtConfig.verifyAccessToken,
     AlbumController.modifyAlbum
+);
+albumRouter.post(
+    '/:albumId/share',
+    JwtConfig.verifyAccessToken,
+    AlbumController.shareAlbum
+);
+
+albumRouter.get(
+    '/:albumId/photos/share',
+    paginationHandler,
+    AlbumController.getPhotosByShareAlbum
 );
 
 module.exports = albumRouter;

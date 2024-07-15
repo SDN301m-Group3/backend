@@ -8,7 +8,7 @@ const MailerService = require('../services/mailer.service');
 const React = db.react;
 const Comment = db.comment;
 const History = db.history;
-const { pagination } = require('../middlewares/pagination');
+const { pagination } = require('../middlewares/pagination.handler');
 
 module.exports = {
     getPhotoById: async (req, res, next) => {
@@ -112,16 +112,43 @@ module.exports = {
         }
     },
 
+    updatePhoto: async (req, res, next) => {
+        try {
+            const ALLOW_CHANGE_FIELDS = ['title', 'tags'];
+            const { photoId } = req.params;
+            const user = req.payload;
+            const changes = req.body;
+
+            const photo = await Photo.findOne({ _id: photoId })
+                .belongTo(user.aud)
+                .isActive();
+            if (!photo) throw createError(404, 'Photo not found');
+
+            const isChangeAllowed = Object.keys(changes).every((key) =>
+                ALLOW_CHANGE_FIELDS.includes(key)
+            );
+            if (!isChangeAllowed)
+                throw createError(400, 'Invalid change fields');
+
+            const { acknowledged } = await photo.updateOne(changes);
+            if (!acknowledged) throw createError(500, 'Internal server error');
+
+            res.status(200).json({
+                message: 'Photo updated successfully',
+                photoId,
+                changes,
+            });
+        } catch (error) {
+            next(error);
+        }
+    },
+
     getCommentByPhotoId: async (req, res, next) => {
         try {
             const { id } = req.params;
             const user = req.payload;
 
-            const { sort, page, pageSize, search } = await pagination(
-                req,
-                res,
-                next
-            );
+            const { sort, page, pageSize, search } = req.pagination;
 
             const album = await Album.findOne(
                 {
@@ -292,7 +319,7 @@ module.exports = {
                 user: user.aud,
                 type: 'USER',
                 receivers: photo.owner._id,
-                content: `${user.username} commented on your photo ${photo?.title}`,
+                content: `${user.username} commented on your photo ${photo?.title ? photo?.title : ''}`,
                 redirectUrl: `/photo/${id}`,
             });
 
@@ -301,7 +328,7 @@ module.exports = {
                 { $push: { notifications: newNoti._id } }
             );
 
-            await MailerService.sendUserLikePhotoEmail(user, photo, newComment);
+            // await MailerService.sendUserLikePhotoEmail(user, photo, newComment);
 
             res.status(200).json({
                 _id: newNoti._id,
@@ -417,7 +444,7 @@ module.exports = {
                 { $push: { notifications: newNoti._id } }
             );
 
-            await MailerService.sendUserReactPhotoEmail(user, photo, newNoti);
+            // await MailerService.sendUserReactPhotoEmail(user, photo, newNoti);
 
             res.status(200).json({
                 _id: newNoti._id,
@@ -487,6 +514,32 @@ module.exports = {
             res.status(200).json(photo);
         } catch (error) {
             console.log(error);
+            next(error);
+        }
+    },
+    editPhoto: async (req, res, next) => {
+        try {
+            const { title, tags } = req.body;
+            const { id } = req.params;
+            const user = req.payload;
+
+            const photo = await Photo.findOne({ _id: id, status: 'ACTIVE' });
+
+            if (!photo) {
+                throw createError(404, 'Photo not found');
+            }
+
+            if (photo.owner.toString() !== user.aud) {
+                throw createError(
+                    403,
+                    'You do not have permission to edit this photo'
+                );
+            }
+
+            await photo.updateOne({ title, tags });
+
+            res.status(200).json({ message: 'Photo updated successfully' });
+        } catch (error) {
             next(error);
         }
     },

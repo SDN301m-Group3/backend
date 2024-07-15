@@ -11,7 +11,8 @@ const client = require('../configs/redis.config');
 const { NodemailerConfig } = require('../configs');
 const likePhoto = require('../templates/likePhoto.template');
 const inviteToAlbum = require('../templates/inviteToAlbum.template');
-const reactPhoto = require('../templates/reactPhoto.template')
+const userGroupUpdateTemplate = require('../templates/userGroupUpdateTemplate');
+const reactPhoto = require('../templates/reactPhoto.template');
 
 const EXPIRED_TIME = 900;
 
@@ -33,14 +34,14 @@ class MailerService {
         const htmlToSend = template({
             email: user.email,
             siteConfigName: process.env.FRONTEND_SITE_NAME,
-            activeLink: `${process.env.BACKEND_URL}/auth/activate/${activationToken}?active=EMAIL_VERIFY`,
+            activeLink: `${process.env.FRONTEND_URL}/active/${activationToken}?active=EMAIL_VERIFY`,
         });
 
         const mailOptions = {
             from: process.env.EMAIL_NAME,
             to: user.email,
             subject: `Activate your account ${process.env.FRONTEND_SITE_NAME}`,
-            text: `Welcome ${user.email} to ${process.env.FRONTEND_SITE_NAME}. Link to active your account: ${process.env.BACKEND_URL}/auth/activate/${activationToken}?active=EMAIL_VERIFY`,
+            text: `Welcome ${user.email} to ${process.env.FRONTEND_SITE_NAME}. Link to active your account: ${process.env.FRONTEND_URL}/active/${activationToken}?active=EMAIL_VERIFY`,
             html: htmlToSend,
         };
 
@@ -187,7 +188,7 @@ class MailerService {
         const htmlToSend = template({
             username: user.username,
             album: album.title,
-            albumImg: album.photos[0].url,
+            albumImg: album.photos.length !== 0 ? album.photos[0].url : '',
             siteConfigName: process.env.FRONTEND_SITE_NAME,
             joinLink: `${process.env.FRONTEND_URL}/album/${album._id}/invite?inviteToken=${inviteToken}`,
         });
@@ -201,6 +202,29 @@ class MailerService {
         };
 
         await NodemailerConfig.transporter.sendMail(mailOptions);
+    }
+
+    async sendUserGroupUpdateMail(user, group) {
+        const template = handlebars.compile(userGroupUpdateTemplate);
+        const htmlToSend = template({
+            username: user.username,
+            groupTitle: group.title,
+            groupImg: group.groupImg,
+            redirectUrl: `${process.env.FRONTEND_URL}/group/${group?._id}`,
+            siteConfigName: process.env.FRONTEND_SITE_NAME
+        });
+    
+        const mailOptions = {
+            from: process.env.EMAIL_NAME,
+            to: user.email,
+            subject: `Group Information Update`,
+            text: `Dear ${user.username}, ${group.title} group has updated group owner`,
+            html: htmlToSend,
+        };
+    
+        await NodemailerConfig.transporter.sendMail(mailOptions);
+    
+        return mailOptions;
     }
 }
 
