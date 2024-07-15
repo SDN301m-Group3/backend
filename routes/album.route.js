@@ -71,4 +71,10 @@ albumRouter.get(
     AlbumController.getPhotosByShareAlbum
 );
 
+albumRouter.delete(
+    '/:albumId/:photoId',
+    JwtConfig.verifyAccessToken,
+    AlbumController.removePhotoFromAlbum
+);
+
 module.exports = albumRouter;
