@@ -686,4 +686,73 @@ module.exports = {
             next(error);
         }
     },
+    outGroup: async (req, res, next) => {
+        try {
+            const user = req.payload;
+            const { groupId } = req.params;
+    
+            const group = await Group.findById(groupId);
+    
+            if (!group) {
+                throw createError(404, 'Group not found');
+            }
+    
+            if (group.owner.toString() === user.aud) {
+                throw createError(400, 'Owner cannot out Group');
+            }
+
+            if (!group.members.includes(user.aud)) {
+                throw createError(400, 'You are not a member of this group');
+            }
+    
+            await Group.findOneAndUpdate(
+                { _id: group._id },
+                { $pull: { members: user.aud } },
+                { new: true }
+            );    
+    
+            await User.findOneAndUpdate(
+                { _id: user.aud },
+                { $pull: { groups: group._id } },
+                { new: true }
+            );
+
+            const newNoti = await Notification.create({
+                user: user.aud,
+                type: 'GROUP',
+                receivers: group._id,
+                content: `${user.username} has left the group ${group.title}`,
+                redirectUrl: `/group/${group._id}`,
+            });
+
+            group.members.forEach(async (member) => {
+                if (member.toString() !== user.aud) {
+                    const memberNoti = await User.findById({
+                        _id: member,
+                    });
+                    await memberNoti.addNotification(newNoti._id);
+                }
+            });
+
+            res.status(200).json({
+                _id: newNoti._id,
+                user: {
+                    _id: user.aud,
+                    username: user.username,
+                    fullName: user.fullName,
+                    email: user.email,
+                    img: user.img,
+                },
+                type: newNoti.type,
+                content: newNoti.content,
+                redirectUrl: newNoti.redirectUrl,
+                createdAt: newNoti.createdAt,
+                receivers: group.members,
+                seen: newNoti.seen,
+                groupId: group._id,
+            });
+        } catch (error) {
+            next(error);
+        }
+    },
 };
