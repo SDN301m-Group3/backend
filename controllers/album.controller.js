@@ -1,15 +1,14 @@
 const Album = require('../models/album.model');
 const createError = require('http-errors');
-const mongoose = require('mongoose');
 const Photo = require('../models/photo.model');
 const Notification = require('../models/notification.model');
 const User = require('../models/user.model');
 const axios = require('axios');
-const { pagination } = require('../middlewares/pagination');
 const MailerService = require('../services/mailer.service');
 const client = require('../configs/redis.config');
 const { randomUUID } = require('crypto');
 const Group = require('../models/group.model');
+const EmailQueueService = require('../services/emailQueue.service');
 
 axios.defaults.baseURL = 'https://api.unsplash.com/';
 
@@ -96,17 +95,37 @@ module.exports = {
             next(error);
         }
     },
+    updateAlbumById: async (req, res, next) => {
+        const ALLOW_CHANGE_FIELDS = ['title'];
+        const user = req.payload;
+        const { albumId } = req.params;
+        const changes = req.body;
 
+        const album = await Album.findOne({ _id: albumId })
+            .belongTo(user.aud)
+            .isActive();
+        if (!album) throw createError(404, 'Album not found');
+
+        const isChangeAllowed = Object.keys(changes).every((key) =>
+            ALLOW_CHANGE_FIELDS.includes(key)
+        );
+        if (!isChangeAllowed) throw createError(400, 'Invalid change fields');
+
+        const { acknowledged } = await album.updateOne(changes);
+        if (!acknowledged) throw createError(500, 'Internal server error');
+
+        res.status(200).json({
+            message: 'Album updated successfully',
+            albumId,
+            changes,
+        });
+    },
     getPhotosByAlbumId: async (req, res, next) => {
         try {
             const user = req.payload;
             const { albumId } = req.params;
 
-            const { sort, page, pageSize, search } = await pagination(
-                req,
-                res,
-                next
-            );
+            const { sort, page, pageSize, search } = req.pagination;
 
             const album = await Album.findOne(
                 {
@@ -125,9 +144,10 @@ module.exports = {
 
             const searchQuery =
                 search === ''
-                    ? { album: albumId }
+                    ? { album: albumId, status: 'ACTIVE' }
                     : {
                           album: albumId,
+                          status: 'ACTIVE',
                           $or: [
                               { title: { $regex: search, $options: 'i' } },
                               { tags: { $in: [search] } },
@@ -155,7 +175,7 @@ module.exports = {
             const hasNext = page < totalPages;
             const hasPrev = page > 1;
 
-            photos = await Photo.find(searchQuery, {
+            const photos = await Photo.find(searchQuery, {
                 _id: 1,
                 title: 1,
                 url: 1,
@@ -264,6 +284,7 @@ module.exports = {
                 url: savedPhoto.location,
                 owner: user.aud,
                 album: albumId,
+                mimeType: savedPhoto.mimetype,
             });
 
             await album.addPhoto(photo._id);
@@ -283,12 +304,12 @@ module.exports = {
                     });
                     await memberNoti.addNotification(newNoti._id);
 
-                    await MailerService.sendUserUploadPhotoEmail(
-                        memberNoti,
-                        user,
-                        photo,
-                        album
-                    );
+                    // await MailerService.sendUserUploadPhotoEmail(
+                    //     memberNoti,
+                    //     user,
+                    //     photo,
+                    //     album
+                    // );
                 }
             });
 
@@ -365,16 +386,19 @@ module.exports = {
                 type: 'USER',
                 receivers: invitedUser._id,
                 content: `You have been invited to join the album ${album.title}`,
-                redirectUrl: `/albums/${album._id}/invite?inviteToken=${inviteToken}`,
+                redirectUrl: `/album/${album._id}/invite?inviteToken=${inviteToken}`,
             });
 
             await invitedUser.addNotification(newNoti._id);
 
-            await MailerService.sendInviteToAlbumEmail(
-                invitedUser,
-                album,
-                inviteToken
-            );
+            EmailQueueService.add({
+                type: 'inviteToAlbum',
+                data: {
+                    user: invitedUser,
+                    album,
+                    inviteToken,
+                },
+            });
 
             res.status(200).json({
                 _id: newNoti._id,
@@ -469,6 +493,170 @@ module.exports = {
 
             await client.del(`inviteToken-${inviteToken}`);
             res.status(200).json(album);
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    shareAlbum: async (req, res, next) => {
+        try {
+            const user = req.payload;
+            const { albumId } = req.params;
+            const { time } = req.body;
+
+            console.log(time);
+            console.log(albumId);
+
+            const SHARE_EXPIRED_TIME = time;
+
+            if (isNaN(SHARE_EXPIRED_TIME)) {
+                throw createError(400, 'Invalid time value');
+            }
+
+            const album = await Album.findOne({
+                _id: albumId,
+                members: { $in: [user.aud] },
+                status: 'ACTIVE',
+            });
+
+            if (!album) {
+                throw createError(404, 'Album not found');
+            }
+
+            const shareToken = `${randomUUID()}${randomUUID()}`.replace(
+                /-/g,
+                ''
+            );
+
+            const expiredTime = new Date(
+                Date.now() + SHARE_EXPIRED_TIME * 1000
+            );
+
+            await client.set(
+                `user-share-album-${shareToken}`,
+                JSON.stringify({
+                    userId: user.aud,
+                    albumId: album._id,
+                    expiredTime: expiredTime.toISOString(),
+                }),
+                'EX',
+                SHARE_EXPIRED_TIME
+            );
+
+            res.status(200).json({
+                shareToken,
+                expiredTime,
+            });
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    getPhotosByShareAlbum: async (req, res, next) => {
+        try {
+            const { shareToken } = req.query;
+
+            console.log(shareToken);
+
+            const shareTokenData = await client.get(
+                `user-share-album-${shareToken}`
+            );
+
+            if (!shareTokenData) {
+                throw createError(400, 'Share token is invalid');
+            }
+
+            const { userId, albumId, expiredTime } = JSON.parse(shareTokenData);
+
+            if (new Date(expiredTime) < new Date()) {
+                throw createError(400, 'Share token is expired');
+            }
+
+            const album = await Album.findById(
+                {
+                    _id: albumId,
+                    status: 'ACTIVE',
+                },
+                {
+                    _id: 1,
+                }
+            );
+
+            if (!album) {
+                throw createError(404, 'Album not found');
+            }
+
+            const { sort, page, pageSize, search } = req.pagination;
+
+            const searchQuery =
+                search === ''
+                    ? { album: albumId, status: 'ACTIVE' }
+                    : {
+                          album: albumId,
+                          status: 'ACTIVE',
+                          $or: [
+                              { title: { $regex: search, $options: 'i' } },
+                              { tags: { $in: [search] } },
+                          ],
+                      };
+
+            const totalElements = await Photo.countDocuments(searchQuery);
+
+            if (totalElements === 0) {
+                return res.status(200).json({
+                    pageMeta: {
+                        totalPages: 0,
+                        page,
+                        totalElements: 0,
+                        pageSize,
+                        hasNext: false,
+                        hasPrev: false,
+                    },
+                    photos: [],
+                });
+            }
+
+            const totalPages = Math.ceil(totalElements / pageSize);
+
+            const hasNext = page < totalPages;
+            const hasPrev = page > 1;
+
+            const photos = await Photo.find(searchQuery, {
+                _id: 1,
+                title: 1,
+                url: 1,
+                createdAt: 1,
+            })
+                .sort({ createdAt: sort === 'asc' ? 1 : -1 })
+                .skip((page - 1) * pageSize)
+                .limit(pageSize);
+
+            const user = await User.findById(
+                {
+                    _id: userId,
+                },
+                {
+                    _id: 1,
+                    username: 1,
+                    fullName: 1,
+                    email: 1,
+                    img: 1,
+                }
+            );
+
+            res.status(200).json({
+                pageMeta: {
+                    totalPages,
+                    page,
+                    totalElements,
+                    pageSize,
+                    hasNext,
+                    hasPrev,
+                },
+                photos,
+                shareUser: user,
+                expiredTime,
+            });
         } catch (error) {
             next(error);
         }

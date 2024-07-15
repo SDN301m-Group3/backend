@@ -27,6 +27,10 @@ const PhotoSchema = new Schema(
             type: String,
             required: true,
         },
+        mimeType: {
+            type: String,
+            required: true,
+        },
         comments: [
             {
                 type: Schema.Types.ObjectId,
@@ -92,6 +96,14 @@ PhotoSchema.methods.removeReact = function (reactId) {
     );
     return this.save();
 };
+
+PhotoSchema.query.belongTo = function (userId) {
+    return this.where({ owner: { $in: [userId] } });
+}
+
+PhotoSchema.query.isActive = function () {
+    return this.where({ status: 'ACTIVE' });
+}
 
 const Photo = mongoose.model('photo', PhotoSchema);
 module.exports = Photo;

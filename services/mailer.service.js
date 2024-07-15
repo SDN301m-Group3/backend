@@ -12,6 +12,7 @@ const { NodemailerConfig } = require('../configs');
 const likePhoto = require('../templates/likePhoto.template');
 const inviteToAlbum = require('../templates/inviteToAlbum.template');
 const userGroupUpdateTemplate = require('../templates/userGroupUpdateTemplate');
+const reactPhoto = require('../templates/reactPhoto.template');
 
 const EXPIRED_TIME = 900;
 
@@ -33,14 +34,14 @@ class MailerService {
         const htmlToSend = template({
             email: user.email,
             siteConfigName: process.env.FRONTEND_SITE_NAME,
-            activeLink: `${process.env.BACKEND_URL}/auth/activate/${activationToken}?active=EMAIL_VERIFY`,
+            activeLink: `${process.env.FRONTEND_URL}/active/${activationToken}?active=EMAIL_VERIFY`,
         });
 
         const mailOptions = {
             from: process.env.EMAIL_NAME,
             to: user.email,
             subject: `Activate your account ${process.env.FRONTEND_SITE_NAME}`,
-            text: `Welcome ${user.email} to ${process.env.FRONTEND_SITE_NAME}. Link to active your account: ${process.env.BACKEND_URL}/auth/activate/${activationToken}?active=EMAIL_VERIFY`,
+            text: `Welcome ${user.email} to ${process.env.FRONTEND_SITE_NAME}. Link to active your account: ${process.env.FRONTEND_URL}/active/${activationToken}?active=EMAIL_VERIFY`,
             html: htmlToSend,
         };
 
@@ -159,12 +160,35 @@ class MailerService {
         return mailOptions;
     }
 
+    async sendUserReactPhotoEmail(user, photo, noti) {
+        const template = handlebars.compile(reactPhoto);
+        const htmlToSend = template({
+            ownerUsername: photo?.owner?.username,
+            photoUrl: photo?.url,
+            content: noti?.content,
+            redirectUrl: `${process.env.FRONTEND_URL}/photo/${photo?._id}`,
+            siteConfigName: process.env.FRONTEND_SITE_NAME,
+        });
+
+        const mailOptions = {
+            from: process.env.EMAIL_NAME,
+            to: photo.owner.email,
+            subject: `${user.username} react on your photo`,
+            text: `${user.username} react on your photo. Click the link to view the reaction: ${process.env.FRONTEND_URL}/photo/${photo.id}`,
+            html: htmlToSend,
+        };
+
+        await NodemailerConfig.transporter.sendMail(mailOptions);
+
+        return mailOptions;
+    }
+
     async sendInviteToAlbumEmail(user, album, inviteToken) {
         const template = handlebars.compile(inviteToAlbum);
         const htmlToSend = template({
             username: user.username,
             album: album.title,
-            albumImg: album.photos[0].url,
+            albumImg: album.photos.length !== 0 ? album.photos[0].url : '',
             siteConfigName: process.env.FRONTEND_SITE_NAME,
             joinLink: `${process.env.FRONTEND_URL}/album/${album._id}/invite?inviteToken=${inviteToken}`,
         });
