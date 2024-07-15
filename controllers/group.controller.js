@@ -631,7 +631,7 @@ module.exports = {
             group.description = description || group.description;
             group.status = status || group.status;
 
-            if (savedGroup) {
+            if (savedPhoto) {
                 group.groupImg = savedPhoto.location;
             }
 
