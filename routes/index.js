@@ -9,6 +9,7 @@ const NotificationRouter = require('./notification.route');
 const PhotoRouter = require('./photo.route');
 const CommentRouter = require('./comment.route');
 const { JwtConfig } = require('../configs');
+const reactRouter = require('./react.route');
 const router = express.Router();
 
 router.get('/', JwtConfig.verifyAccessToken, async (req, res, next) => {
@@ -21,6 +22,7 @@ router.use('/albums', AlbumRouter);
 router.use('/users', UserRouter);
 router.use('/notifications', NotificationRouter);
 router.use('/photos', PhotoRouter);
+router.use('/reacts', reactRouter)
 
 router.use((req, res, next) => {
     next(createError.NotFound());
