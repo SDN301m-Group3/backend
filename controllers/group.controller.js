@@ -160,10 +160,23 @@ module.exports = {
             const { groupId } = req.params;
             const { search = '' } = req.query;
 
+            const group = await Group.findOne(
+                {
+                    _id: groupId,
+                },
+                {
+                    owner: 1,
+                }
+            );
+
             const albums = await Album.find(
                 {
                     group: groupId,
-                    members: { $in: [user.aud] },
+                    $or: [
+                        group.owner.toString() === user.aud
+                            ? {}
+                            : { members: { $in: [user.aud] } },
+                    ],
                     status: 'ACTIVE',
                     $or: [
                         { title: { $regex: search, $options: 'i' } },
