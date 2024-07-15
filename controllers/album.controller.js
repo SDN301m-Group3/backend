@@ -381,7 +381,7 @@ module.exports = {
                 user: user.aud,
                 type: 'ALBUM',
                 receivers: album._id,
-                content: `${user.username} added a new photo to album ${album.title}`,
+                content: `${user.username} removed a photo from album ${album.title}`,
                 redirectUrl: `/photo/${photo._id}`,
             });
 
