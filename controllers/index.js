@@ -5,7 +5,6 @@ const UserController = require('./user.controller');
 const NotificationController = require('./notification.controller');
 const PhotoController = require('./photo.controller');
 const CommentController = require('./comment.controller');
-const ReactController = require('./react.controller')
 
 module.exports = {
     AuthController,
@@ -15,5 +14,4 @@ module.exports = {
     NotificationController,
     PhotoController,
     CommentController,
-    ReactController
 };
